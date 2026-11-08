@@ -1,8 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Representasi satu dokumen di koleksi Firestore `unitWip`.
-/// Field persis mengikuti skema yang sudah kita buat di Firestore,
-/// dan kriteria C1-C5 sesuai BAB IV laporan.
+/// Field persis mengikuti skema di `firestore.rules`, dan kriteria
+/// C1-C5 sesuai BAB IV laporan.
+///
+/// PENTING: nilai-nilai string untuk statusSparepart dan statusSpkAsuransi
+/// di bawah ini HARUS sama persis dengan whitelist di firestore.rules.
+/// Kalau salah satu diubah, ubah juga yang satunya.
 class UnitWip {
   final String id; // Firestore document ID
   final String noWO;
@@ -10,7 +14,7 @@ class UnitWip {
   final DateTime tanggalMasuk;
   final int jumlahPanel; // C1 (Cost)
   final String statusSparepart; // 'ready' | 'order_eo' | 'back_order' -> C2 (Benefit)
-  final String statusSpkAsuransi; // 'disetujui' | 'proses' | 'bermasalah' -> C3 (Benefit)
+  final String statusSpkAsuransi; // 'disetujui' | 'proses_klaim' | 'bermasalah' -> C3 (Benefit)
   final double estimasiBiaya; // C5 (Cost)
   final String statusPengerjaan; // 'menunggu' | 'sedang_dikerjakan' | 'selesai'
   final String createdBy;
@@ -40,7 +44,8 @@ class UnitWip {
   }
 
   /// Konversi statusSparepart (string kualitatif) -> nilai kuantitatif C2,
-  /// persis tabel 4.1.3 di laporan.
+  /// persis tabel 4.1.3 di laporan. Harus sinkron dengan whitelist di
+  /// firestore.rules (allow create/update untuk koleksi unitWip).
   int get nilaiC2 {
     switch (statusSparepart) {
       case 'ready':
@@ -51,24 +56,27 @@ class UnitWip {
         return 1;
       default:
         throw ArgumentError(
-          'statusSparepart tidak dikenali: $statusSparepart (unit: $noWO)',
+          'statusSparepart tidak dikenali: $statusSparepart (unit: $noWO). '
+          'Cek kesesuaian dengan whitelist di firestore.rules.',
         );
     }
   }
 
   /// Konversi statusSpkAsuransi (string kualitatif) -> nilai kuantitatif C3,
-  /// persis tabel 4.1.3 di laporan.
+  /// persis tabel 4.1.3 di laporan. Harus sinkron dengan whitelist di
+  /// firestore.rules (allow create/update untuk koleksi unitWip).
   int get nilaiC3 {
     switch (statusSpkAsuransi) {
       case 'disetujui':
         return 5;
-      case 'proses':
+      case 'proses_klaim':
         return 3;
       case 'bermasalah':
         return 1;
       default:
         throw ArgumentError(
-          'statusSpkAsuransi tidak dikenali: $statusSpkAsuransi (unit: $noWO)',
+          'statusSpkAsuransi tidak dikenali: $statusSpkAsuransi (unit: $noWO). '
+          'Cek kesesuaian dengan whitelist di firestore.rules.',
         );
     }
   }
