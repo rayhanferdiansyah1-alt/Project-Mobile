@@ -19,6 +19,21 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SPK WIP Bodi & Cat',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0D47A1), // biru tua, kontras jelas vs putih
+          secondary: const Color(0xFFFF6F00), // oranye, kontras vs biru -- dipakai avatar
+        ),
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 1,
+        ),
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
       home: const AuthGate(),
     );
   }

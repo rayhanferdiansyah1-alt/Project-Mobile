@@ -1,8 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
+import '../../widgets/app_user_menu.dart';
 
 class KbDashboardScreen extends StatefulWidget {
   const KbDashboardScreen({super.key});
@@ -63,10 +63,7 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                 : const Icon(Icons.refresh),
             onPressed: _isRecomputing ? null : _manualRecompute,
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
-          ),
+          const Padding(padding: EdgeInsets.only(right: 12), child: AppUserMenu()),
         ],
       ),
       body: StreamBuilder<List<UnitWip>>(
@@ -97,7 +94,7 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
               return ListView.separated(
                 padding: const EdgeInsets.all(12),
                 itemCount: ranking.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final entry = ranking[index];
                   final unit = unitById[entry.unitId];

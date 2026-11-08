@@ -1,8 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
+import '../../widgets/app_user_menu.dart';
 import 'sa_unit_form_screen.dart';
 
 class SaDashboardScreen extends StatelessWidget {
@@ -15,11 +15,8 @@ class SaDashboardScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Data Unit WIP - Service Advisor'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
-          ),
+        actions: const [
+          Padding(padding: EdgeInsets.only(right: 12), child: AppUserMenu()),
         ],
       ),
       floatingActionButton: FloatingActionButton(
