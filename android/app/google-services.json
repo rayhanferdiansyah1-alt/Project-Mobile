@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "791895393503",
+    "project_id": "db-mitsubishi",
+    "storage_bucket": "db-mitsubishi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:791895393503:android:9eccaf094242916d15956a",
+        "android_client_info": {
+          "package_name": "com.example.mitsubishi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8KE--hJd19yI1YC00n36JA0y002nu9LE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
