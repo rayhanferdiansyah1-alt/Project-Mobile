@@ -26,13 +26,21 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
   }
 
   Future<void> _openForm(BuildContext context, {UnitWip? existingUnit}) async {
-    await Navigator.push(
+    final saved = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => SaUnitFormScreen(existingUnit: existingUnit)),
+      MaterialPageRoute<bool>(
+        builder: (_) => SaUnitFormScreen(existingUnit: existingUnit),
+      ),
     );
-    if (context.mounted && existingUnit == null) {
+    if (context.mounted && saved == true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data unit berhasil disimpan, ranking dihitung ulang.')),
+        SnackBar(
+          content: Text(
+            existingUnit == null
+                ? 'Unit baru berhasil disimpan, ranking dihitung ulang.'
+                : 'Perubahan unit berhasil disimpan, ranking dihitung ulang.',
+          ),
+        ),
       );
     }
   }
@@ -62,7 +70,10 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
         backgroundColor: accent,
         foregroundColor: Colors.black87,
         icon: const Icon(Icons.add),
-        label: const Text('Tambah Unit', style: TextStyle(fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Tambah Unit',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: StreamBuilder<List<UnitWip>>(
         stream: _repo.watchUnitWip(),
@@ -79,10 +90,12 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
           final filtered = q.isEmpty
               ? all
               : all
-                  .where((u) =>
-                      u.noWO.toLowerCase().contains(q) ||
-                      u.tipeKendaraan.toLowerCase().contains(q))
-                  .toList();
+                    .where(
+                      (u) =>
+                          u.noWO.toLowerCase().contains(q) ||
+                          u.tipeKendaraan.toLowerCase().contains(q),
+                    )
+                    .toList();
 
           return CustomScrollView(
             slivers: [
@@ -102,34 +115,38 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
               if (all.isEmpty)
                 const SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(child: Text('Belum ada unit WIP. Tekan + Tambah Unit untuk menambah.')),
+                  child: Center(
+                    child: Text(
+                      'Belum ada unit WIP. Tekan + Tambah Unit untuk menambah.',
+                    ),
+                  ),
                 )
               else if (filtered.isEmpty)
                 const SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(child: Text('Tidak ditemukan unit yang cocok.')),
+                  child: Center(
+                    child: Text('Tidak ditemukan unit yang cocok.'),
+                  ),
                 )
               else
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final unit = filtered[index];
-                        return StaggeredFadeIn(
-                          index: index,
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: _UnitCard(
-                              unit: unit,
-                              onEdit: () => _openForm(context, existingUnit: unit),
-                              onDelete: () => _confirmDelete(context, unit),
-                            ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final unit = filtered[index];
+                      return StaggeredFadeIn(
+                        index: index,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _UnitCard(
+                            unit: unit,
+                            onEdit: () =>
+                                _openForm(context, existingUnit: unit),
+                            onDelete: () => _confirmDelete(context, unit),
                           ),
-                        );
-                      },
-                      childCount: filtered.length,
-                    ),
+                        ),
+                      );
+                    }, childCount: filtered.length),
                   ),
                 ),
             ],
@@ -169,10 +186,15 @@ class _Header extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.1),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
@@ -201,7 +223,10 @@ class _Header extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Kelola data unit kendaraan masuk bengkel',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12.5),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 12.5,
+              ),
             ),
           ],
         ),
@@ -215,7 +240,12 @@ class _HeaderCurveClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     final path = Path();
     path.lineTo(0, size.height - 36);
-    path.quadraticBezierTo(size.width / 2, size.height, size.width, size.height - 36);
+    path.quadraticBezierTo(
+      size.width / 2,
+      size.height,
+      size.width,
+      size.height - 36,
+    );
     path.lineTo(size.width, 0);
     path.close();
     return path;
@@ -259,7 +289,11 @@ class _SearchBar extends StatelessWidget {
 
 /// ===== Kartu unit WIP =====
 class _UnitCard extends StatelessWidget {
-  const _UnitCard({required this.unit, required this.onEdit, required this.onDelete});
+  const _UnitCard({
+    required this.unit,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final UnitWip unit;
   final VoidCallback onEdit;
@@ -276,7 +310,8 @@ class _UnitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tanggal = '${unit.tanggalMasuk.day}/${unit.tanggalMasuk.month}/${unit.tanggalMasuk.year}';
+    final tanggal =
+        '${unit.tanggalMasuk.day}/${unit.tanggalMasuk.month}/${unit.tanggalMasuk.year}';
     final sparepartColor = _chipColor('sparepart', unit.statusSparepart);
     final spkColor = _chipColor('spk', unit.statusSpkAsuransi);
 
@@ -305,11 +340,17 @@ class _UnitCard extends StatelessWidget {
                   children: [
                     Text(
                       unit.tipeKendaraan,
-                      style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     Text(
                       unit.noWO,
-                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -320,7 +361,11 @@ class _UnitCard extends StatelessWidget {
                 onPressed: onEdit,
               ),
               IconButton(
-                icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade400),
+                icon: Icon(
+                  Icons.delete_outline,
+                  size: 20,
+                  color: Colors.red.shade400,
+                ),
                 visualDensity: VisualDensity.compact,
                 onPressed: onDelete,
               ),
@@ -329,16 +374,31 @@ class _UnitCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _InfoPair(label: 'MASUK', value: tanggal)),
-              Expanded(child: _InfoPair(label: 'AGING', value: '${unit.agingHari} hari')),
+              Expanded(
+                child: _InfoPair(label: 'MASUK', value: tanggal),
+              ),
+              Expanded(
+                child: _InfoPair(
+                  label: 'AGING',
+                  value: '${unit.agingHari} hari',
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: _InfoPair(label: 'PANEL', value: '${unit.jumlahPanel} panel')),
               Expanded(
-                child: _InfoPair(label: 'BIAYA', value: 'Rp ${formatRupiah(unit.estimasiBiaya)}'),
+                child: _InfoPair(
+                  label: 'PANEL',
+                  value: '${unit.jumlahPanel} panel',
+                ),
+              ),
+              Expanded(
+                child: _InfoPair(
+                  label: 'BIAYA',
+                  value: 'Rp ${formatRupiah(unit.estimasiBiaya)}',
+                ),
               ),
             ],
           ),
@@ -358,7 +418,11 @@ class _UnitCard extends StatelessWidget {
               ),
               Text(
                 'diisi Partman',
-                style: TextStyle(fontSize: 10.5, color: Colors.grey.shade500, fontStyle: FontStyle.italic),
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: Colors.grey.shade500,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ],
           ),
@@ -389,7 +453,10 @@ class _InfoPair extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
@@ -411,7 +478,11 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: color),
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
@@ -440,7 +511,11 @@ class _DeleteConfirmDialog extends StatelessWidget {
                 color: Colors.red.shade50,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.delete_outline, color: Colors.red.shade400, size: 26),
+              child: Icon(
+                Icons.delete_outline,
+                color: Colors.red.shade400,
+                size: 26,
+              ),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -451,7 +526,11 @@ class _DeleteConfirmDialog extends StatelessWidget {
             Text(
               '${unit.noWO} (${unit.tipeKendaraan}) akan dihapus dari daftar WIP, lalu ranking dihitung ulang. Tindakan ini tidak dapat dibatalkan.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.4),
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 20),
             Row(
@@ -461,7 +540,9 @@ class _DeleteConfirmDialog extends StatelessWidget {
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text('Batal'),
                   ),
@@ -474,7 +555,9 @@ class _DeleteConfirmDialog extends StatelessWidget {
                       backgroundColor: Colors.red.shade500,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text('Hapus'),
                   ),

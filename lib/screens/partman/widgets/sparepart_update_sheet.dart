@@ -17,9 +17,6 @@ const _options = [
   _Option('back_order', 'Back Order', 'Suku cadang kosong dari pabrik', 1),
 ];
 
-/// Bottom sheet khusus ubah statusSparepart. Pilihan radio tidak langsung
-/// commit ke Firestore -- baru ditulis saat tombol Simpan ditekan.
-/// Mengembalikan true kalau berhasil disimpan, null/false kalau dibatalkan.
 Future<bool?> showSparepartUpdateSheet(
   BuildContext context, {
   required UnitWip unit,
@@ -47,6 +44,18 @@ class _SparepartSheetState extends State<_SparepartSheet> {
   bool _isSaving = false;
 
   Future<void> _simpan() async {
+    // Nilai lama di database bisa tidak valid (mis. hasil input manual).
+    if (!_options.any((o) => o.value == _selected)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih salah satu status terlebih dahulu.')),
+      );
+      return;
+    }
+    // Tidak ada perubahan -> tutup saja, jangan tulis ke Firestore.
+    if (_selected == widget.unit.statusSparepart) {
+      Navigator.pop(context, false);
+      return;
+    }
     setState(() => _isSaving = true);
     try {
       await widget.repo.updateUnitFields(widget.unit.id, {'statusSparepart': _selected});
@@ -143,7 +152,12 @@ class _SparepartSheetState extends State<_SparepartSheet> {
     );
   }
 
-  String _labelOf(String v) => _options.firstWhere((o) => o.value == v).title;
+  String _labelOf(String v) => _options
+      .firstWhere(
+        (o) => o.value == v,
+        orElse: () => _Option(v, '$v (tidak valid)', '', 0),
+      )
+      .title;
 }
 
 class _OptionTile extends StatelessWidget {

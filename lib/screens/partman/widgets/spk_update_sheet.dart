@@ -17,9 +17,6 @@ const _options = [
   _Option('bermasalah', 'Bermasalah', 'Dokumen jaminan belum disetujui / bermasalah', 1),
 ];
 
-/// Bottom sheet khusus ubah statusSpkAsuransi. Pilihan radio tidak langsung
-/// commit ke Firestore -- baru ditulis saat tombol Simpan ditekan.
-/// Mengembalikan true kalau berhasil disimpan, null/false kalau dibatalkan.
 Future<bool?> showSpkUpdateSheet(
   BuildContext context, {
   required UnitWip unit,
@@ -47,6 +44,17 @@ class _SpkSheetState extends State<_SpkSheet> {
   bool _isSaving = false;
 
   Future<void> _simpan() async {
+    if (!_options.any((o) => o.value == _selected)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih salah satu status terlebih dahulu.')),
+      );
+      return;
+    }
+
+    if (_selected == widget.unit.statusSpkAsuransi) {
+      Navigator.pop(context, false);
+      return;
+    }
     setState(() => _isSaving = true);
     try {
       await widget.repo.updateUnitFields(widget.unit.id, {'statusSpkAsuransi': _selected});
@@ -143,7 +151,12 @@ class _SpkSheetState extends State<_SpkSheet> {
     );
   }
 
-  String _labelOf(String v) => _options.firstWhere((o) => o.value == v).title;
+  String _labelOf(String v) => _options
+      .firstWhere(
+        (o) => o.value == v,
+        orElse: () => _Option(v, '$v (tidak valid)', '', 0),
+      )
+      .title;
 }
 
 class _OptionTile extends StatelessWidget {

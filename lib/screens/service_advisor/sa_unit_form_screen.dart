@@ -94,7 +94,7 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
         await _repo.createUnit(newUnit);
       }
 
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context, true); // true = berhasil disimpan
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -187,7 +187,7 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Status sparepart dan SPK asuransi diisi oleh Partman. Nilai awal akan baru: Order EO dan Proses Klaim.',
+                      'Status sparepart dan SPK asuransi diisi oleh Partman. Nilai awal unit baru: Back Order dan Proses Klaim.',
                       style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500, height: 1.4),
                     ),
                     const SizedBox(height: 28),
