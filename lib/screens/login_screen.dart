@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -8,7 +10,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -16,6 +19,25 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
+
+  late final AnimationController _animCtrl;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _fade = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
+    _animCtrl.forward();
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -64,6 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _animCtrl.dispose();
     super.dispose();
   }
 
@@ -74,100 +97,229 @@ class _LoginScreenState extends State<LoginScreen> {
     final secondary = theme.colorScheme.secondary;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(primary, Colors.black, 0.55)!,
-              Color.lerp(primary, Colors.black, 0.75)!,
-              Colors.black,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Logo / ikon
-                    Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [secondary, secondary.withValues(alpha: 0.6)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: secondary.withValues(alpha: 0.4),
-                            blurRadius: 24,
-                            spreadRadius: 2,
-                          ),
+      backgroundColor: const Color(0xFFF0F1F4),
+      body: SingleChildScrollView(
+        child: FadeTransition(
+          opacity: _fade,
+          child: SlideTransition(
+            position: _slide,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ===== Header gelap premium dengan blob blur =====
+                ClipPath(
+                  clipper: _BottomCurveClipper(),
+                  child: Container(
+                    height: 320,
+                    padding: const EdgeInsets.fromLTRB(28, 56, 28, 70),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color.lerp(primary, Colors.black, 0.15)!,
+                          Color.lerp(primary, Colors.black, 0.45)!,
+                          Colors.black,
                         ],
                       ),
-                      child: const Icon(
-                        Icons.directions_car_filled_rounded,
-                        color: Colors.white,
-                        size: 42,
-                      ),
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'SPK WIP Bodi & Cat',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Sistem Pendukung Keputusan Prioritas Unit WIP',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.65),
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-
-                    // Card form dengan efek glass/elevated
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.12),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Blob blur oranye (glow lembut, bukan solid)
+                        Positioned(
+                          right: -30,
+                          top: 20,
+                          child: _GlowBlob(color: secondary, size: 170),
                         ),
+                        // Blob blur biru muda
+                        Positioned(
+                          left: -50,
+                          bottom: -20,
+                          child: _GlowBlob(
+                            color: Colors.lightBlueAccent,
+                            size: 150,
+                            opacity: 0.18,
+                          ),
+                        ),
+                        // Aksen bentuk oranye tegas (solid, bukan blur) -- focal point
+                        Positioned(
+                          right: 8,
+                          top: 64,
+                          child: Transform.rotate(
+                            angle: 0.45,
+                            child: Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    secondary,
+                                    Color.lerp(secondary, Colors.white, 0.25)!,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(22),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: secondary.withValues(alpha: 0.5),
+                                    blurRadius: 28,
+                                    spreadRadius: 1,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Konten teks
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.08),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.35),
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: const Text(
+                                'PT PRABU PURA MOTOR KARAWANG',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            const Text(
+                              'SPK WIP\nBodi & Cat',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 34,
+                                height: 1.1,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Workshop Decision Support System',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.55),
+                                fontSize: 12.5,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                  child: Transform.translate(
+                    offset: const Offset(0, -40),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(32),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 30,
-                            offset: const Offset(0, 12),
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.10),
+                            blurRadius: 40,
+                            offset: const Offset(0, 20),
                           ),
                         ],
                       ),
                       child: Form(
                         key: _formKey,
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildField(
+                            const Text(
+                              'Selamat Datang',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF14181F),
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Gunakan akun yang diberikan bengkel.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF8A8F98),
+                              ),
+                            ),
+                            const SizedBox(height: 26),
+
+                            _CapsLabel('EMAIL'),
+                            const SizedBox(height: 7),
+                            TextFormField(
                               controller: _emailController,
-                              label: 'Email',
-                              icon: Icons.alternate_email_rounded,
                               keyboardType: TextInputType.emailAddress,
+                              style: const TextStyle(fontSize: 15),
+                              decoration: InputDecoration(
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade400,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.mail_outline,
+                                  color: primary,
+                                  size: 21,
+                                ),
+                                filled: true,
+                                fillColor: primary.withValues(alpha: 0.035),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: primary.withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: primary.withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: primary,
+                                    width: 2,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                              ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'Email tidak boleh kosong';
@@ -175,22 +327,56 @@ class _LoginScreenState extends State<LoginScreen> {
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 16),
-                            _buildField(
+                            const SizedBox(height: 18),
+
+                            _CapsLabel('KATA SANDI'),
+                            const SizedBox(height: 7),
+                            TextFormField(
                               controller: _passwordController,
-                              label: 'Password',
-                              icon: Icons.lock_outline_rounded,
                               obscureText: _obscurePassword,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
-                                  color: Colors.white54,
-                                  size: 20,
+                              style: const TextStyle(fontSize: 15),
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(
+                                  Icons.lock_outline,
+                                  color: Color(0xFF8A8F98),
+                                  size: 21,
                                 ),
-                                onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                    color: const Color(0xFF8A8F98),
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  ),
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF2F3F5),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: primary,
+                                    width: 2,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: Colors.redAccent,
+                                  ),
                                 ),
                               ),
                               validator: (value) {
@@ -200,8 +386,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 return null;
                               },
                             ),
+
                             if (_errorMessage != null) ...[
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 14),
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
@@ -209,16 +396,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                   vertical: 10,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.red.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: Colors.red.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: Colors.red.withValues(alpha: 0.3),
+                                    color: Colors.red.withValues(alpha: 0.25),
                                   ),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.error_outline,
-                                        color: Colors.redAccent, size: 18),
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: Colors.redAccent,
+                                      size: 18,
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
@@ -233,25 +423,36 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 24),
+
+                            const SizedBox(height: 26),
                             SizedBox(
                               width: double.infinity,
-                              height: 50,
+                              height: 56,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(30),
                                   gradient: LinearGradient(
-                                    colors: [secondary, primary],
                                     begin: Alignment.centerLeft,
                                     end: Alignment.centerRight,
+                                    colors: [
+                                      primary,
+                                      Color.lerp(primary, Colors.black, 0.25)!,
+                                    ],
                                   ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: primary.withValues(alpha: 0.38),
+                                      blurRadius: 22,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
                                 ),
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
                                     shadowColor: Colors.transparent,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
+                                      borderRadius: BorderRadius.circular(30),
                                     ),
                                   ),
                                   onPressed: _isLoading ? null : _login,
@@ -264,13 +465,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                             color: Colors.white,
                                           ),
                                         )
-                                      : const Text(
-                                          'MASUK',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 1.1,
-                                          ),
+                                      : const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              'Masuk',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                letterSpacing: 0.3,
+                                              ),
+                                            ),
+                                            SizedBox(width: 8),
+                                            Icon(
+                                              Icons.arrow_forward_rounded,
+                                              color: Colors.white,
+                                              size: 19,
+                                            ),
+                                          ],
                                         ),
                                 ),
                               ),
@@ -279,65 +493,82 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    Text(
-                      'PT Prabu Pura Motor Karawang',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        fontSize: 12,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool obscureText = false,
-    Widget? suffixIcon,
-    TextInputType? keyboardType,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white),
-      cursorColor: Colors.white,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
-        prefixIcon: Icon(icon, color: Colors.white54, size: 20),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.secondary,
-            width: 1.6,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.redAccent),
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+/// Label kecil huruf kapital dengan spacing, dipakai di atas tiap field.
+class _CapsLabel extends StatelessWidget {
+  const _CapsLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF8A8F98),
+        letterSpacing: 0.7,
       ),
     );
   }
+}
+
+/// Lingkaran glow blur lembut -- efek glassmorphism dekoratif di header,
+/// dibuat dari warna solid yang di-blur, bukan gambar/asset.
+class _GlowBlob extends StatelessWidget {
+  const _GlowBlob({
+    required this.color,
+    required this.size,
+    this.opacity = 0.35,
+  });
+
+  final Color color;
+  final double size;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: opacity),
+        ),
+      ),
+    );
+  }
+}
+
+/// Membuat lengkungan besar di bagian bawah header gelap.
+class _BottomCurveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.lineTo(0, size.height - 60);
+    path.quadraticBezierTo(
+      size.width / 2,
+      size.height,
+      size.width,
+      size.height - 60,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
