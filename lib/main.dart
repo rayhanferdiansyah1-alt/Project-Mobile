@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF0D47A1), // biru tua, kontras jelas vs putih
-          secondary: const Color(0xFFFF6F00), // oranye, kontras vs biru -- dipakai avatar
+          secondary: const Color(0xFFFFB300), // amber, kontras vs biru -- dipakai avatar & FAB
         ),
         appBarTheme: const AppBarTheme(
           centerTitle: false,
