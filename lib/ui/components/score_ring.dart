@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../utils/wip_format.dart';
+import '../../utils/wip_format.dart';
 
 /// Lingkaran skor Ui dengan animasi mengisi dari 0 ke nilai aslinya,
 /// dipakai di kartu dashboard (ukuran kecil) dan halaman detail (ukuran besar).

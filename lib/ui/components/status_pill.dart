@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 /// Pill berwarna untuk status sparepart/SPK, skema warna konsisten
 /// dengan KB dashboard: hijau = siap, oranye = proses, merah = bermasalah.
 class StatusPill extends StatelessWidget {
@@ -40,16 +42,16 @@ class StatusPill extends StatelessWidget {
     final Color fg;
     switch (_level) {
       case _PillLevel.good:
-        bg = const Color(0xFF1F9D6B).withValues(alpha: 0.12);
-        fg = const Color(0xFF1F9D6B);
+        bg = AppColors.success.withValues(alpha: 0.12);
+        fg = AppColors.success;
         break;
       case _PillLevel.warn:
-        bg = const Color(0xFFFF8A00).withValues(alpha: 0.12);
-        fg = const Color(0xFFB36B00);
+        bg = AppColors.warning.withValues(alpha: 0.12);
+        fg = AppColors.warningText;
         break;
       case _PillLevel.bad:
-        bg = const Color(0xFFE74C3C).withValues(alpha: 0.12);
-        fg = const Color(0xFFC0392B);
+        bg = AppColors.danger.withValues(alpha: 0.12);
+        fg = AppColors.dangerText;
         break;
     }
     return Container(

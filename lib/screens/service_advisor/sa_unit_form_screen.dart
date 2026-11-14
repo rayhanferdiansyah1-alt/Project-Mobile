@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
+import '../../ui/components/cancel_save_buttons.dart';
+import '../../ui/components/form_field_box.dart';
+import '../../ui/components/headers/form_header.dart';
+import '../../ui/theme/app_colors.dart';
 
 class SaUnitFormScreen extends StatefulWidget {
   const SaUnitFormScreen({super.key, this.existingUnit});
@@ -123,13 +127,11 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F5FB),
+      backgroundColor: AppColors.canvasBlue,
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _FormHeader(primary: primary, isEditMode: _isEditMode)),
+          SliverToBoxAdapter(child: FormHeader(isEditMode: _isEditMode)),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -138,25 +140,25 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _FieldBox(
+                    FieldBox(
                       label: 'NO. WO / PKB',
                       child: TextFormField(
                         controller: _noWOCtrl,
-                        decoration: _plainDecoration('Contoh: 150021-BPM-2026-11-000001'),
+                        decoration: plainInputDecoration('Contoh: 150021-BPM-2026-11-000001'),
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
                       ),
                     ),
                     const SizedBox(height: 14),
-                    _FieldBox(
+                    FieldBox(
                       label: 'TIPE KENDARAAN',
                       child: TextFormField(
                         controller: _tipeCtrl,
-                        decoration: _plainDecoration('Contoh: Mitsubishi Xpander'),
+                        decoration: plainInputDecoration('Contoh: Mitsubishi Xpander'),
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
                       ),
                     ),
                     const SizedBox(height: 14),
-                    _FieldBox(
+                    FieldBox(
                       label: 'TANGGAL MASUK',
                       child: InkWell(
                         onTap: _pickTanggal,
@@ -173,12 +175,12 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    _FieldBox(
+                    FieldBox(
                       label: 'JUMLAH PANEL',
                       child: TextFormField(
                         controller: _panelCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: _plainDecoration('Isi dalam jumlah panel'),
+                        decoration: plainInputDecoration('Isi dalam jumlah panel'),
                         validator: (v) {
                           final n = int.tryParse(v ?? '');
                           if (n == null || n <= 0) return 'Harus angka bulat > 0';
@@ -187,12 +189,12 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    _FieldBox(
+                    FieldBox(
                       label: 'ESTIMASI BIAYA (RP)',
                       child: TextFormField(
                         controller: _biayaCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: _plainDecoration('Isi dalam rupiah penuh'),
+                        decoration: plainInputDecoration('Isi dalam rupiah penuh'),
                         validator: (v) {
                           final n = double.tryParse(v ?? '');
                           if (n == null || n <= 0) return 'Harus angka > 0';
@@ -206,174 +208,18 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                       style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500, height: 1.4),
                     ),
                     const SizedBox(height: 28),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _isSaving ? null : () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            child: const Text('Batal'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: ElevatedButton(
-                            onPressed: _isSaving ? null : _submit,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            child: _isSaving
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                  )
-                                : const Text('Simpan', style: TextStyle(fontWeight: FontWeight.w700)),
-                          ),
-                        ),
-                      ],
+                    CancelSaveButtons(
+                      isSaving: _isSaving,
+                      onCancel: () => Navigator.pop(context),
+                      onSave: _submit,
+                      saveFlex: 2,
+                      boldSaveLabel: true,
                     ),
                   ],
                 ),
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-InputDecoration _plainDecoration(String hint) {
-  return InputDecoration(
-    hintText: hint,
-    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13.5),
-    isDense: true,
-    border: InputBorder.none,
-  );
-}
-
-class _FormHeader extends StatelessWidget {
-  const _FormHeader({required this.primary, required this.isEditMode});
-
-  final Color primary;
-  final bool isEditMode;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: _FormHeaderCurveClipper(),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 56, 20, 40),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(primary, Colors.black, 0.1)!,
-              Color.lerp(primary, Colors.black, 0.4)!,
-            ],
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'SERVICE ADVISOR',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.only(left: 4),
-              child: Text(
-                isEditMode ? 'Edit Unit WIP' : 'Tambah Unit WIP',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FormHeaderCurveClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.lineTo(0, size.height - 24);
-    path.quadraticBezierTo(size.width / 2, size.height, size.width, size.height - 24);
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
-}
-
-class _FieldBox extends StatelessWidget {
-  const _FieldBox({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey.shade500,
-              letterSpacing: 0.4,
-            ),
-          ),
-          const SizedBox(height: 4),
-          child,
         ],
       ),
     );

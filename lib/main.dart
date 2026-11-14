@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth_gate.dart';
+import 'ui/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,21 +20,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SPK WIP Bodi & Cat',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D47A1), // biru tua, kontras jelas vs putih
-          secondary: const Color(0xFFFFB300), // amber, kontras vs biru -- dipakai avatar & FAB
-        ),
-        appBarTheme: const AppBarTheme(
-          centerTitle: false,
-          elevation: 1,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
+      theme: AppTheme.light(),
       home: const AuthGate(),
     );
   }
