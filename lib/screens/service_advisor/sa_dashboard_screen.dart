@@ -52,7 +52,27 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
         unit: unit,
         onConfirm: () async {
           Navigator.pop(ctx);
-          await _repo.deleteUnit(unit.id);
+          try {
+            await _repo.deleteUnit(unit.id);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Unit ${unit.noWO} dihapus, ranking dihitung ulang.'),
+                ),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              final ditolak = e.toString().contains('permission-denied');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(ditolak
+                      ? 'Hanya unit yang Anda buat sendiri yang dapat dihapus.'
+                      : 'Gagal menghapus unit: $e'),
+                ),
+              );
+            }
+          }
         },
       ),
     );

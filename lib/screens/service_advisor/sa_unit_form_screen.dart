@@ -68,6 +68,21 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
       final jumlahPanel = int.parse(_panelCtrl.text);
       final estimasiBiaya = double.parse(_biayaCtrl.text);
 
+      // No. WO adalah identitas unit: tidak boleh ada dua unit dengan No. WO sama.
+      final noWO = _noWOCtrl.text.trim();
+      final sudahDipakai = await _repo.isNoWOTaken(
+        noWO,
+        exceptUnitId: widget.existingUnit?.id,
+      );
+      if (sudahDipakai) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('No. WO $noWO sudah dipakai unit lain.')),
+          );
+        }
+        return; // _isSaving dikembalikan oleh blok finally di bawah
+      }
+
       if (_isEditMode) {
         await _repo.updateUnitFields(widget.existingUnit!.id, {
           'noWO': _noWOCtrl.text.trim(),

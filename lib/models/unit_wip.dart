@@ -1,12 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Representasi satu dokumen di koleksi Firestore `unitWip`.
-/// Field persis mengikuti skema di `firestore.rules`, dan kriteria
-/// C1-C5 sesuai BAB IV laporan.
-///
-/// PENTING: nilai-nilai string untuk statusSparepart dan statusSpkAsuransi
-/// di bawah ini HARUS sama persis dengan whitelist di firestore.rules.
-/// Kalau salah satu diubah, ubah juga yang satunya.
 class UnitWip {
   final String id; // Firestore document ID
   final String noWO;
@@ -35,17 +28,11 @@ class UnitWip {
   });
 
   /// C4 (Benefit): durasi antrean/aging dalam hari, dihitung real-time
-  /// terhadap waktu sekarang -- bukan field statis di Firestore.
-  /// Sesuai BAB II: "menghitung durasi aging secara real-time
-  /// berdasarkan tanggal sistem".
   int get agingHari {
     final now = DateTime.now();
     return now.difference(tanggalMasuk).inDays;
   }
 
-  /// Konversi statusSparepart (string kualitatif) -> nilai kuantitatif C2,
-  /// persis tabel 4.1.3 di laporan. Harus sinkron dengan whitelist di
-  /// firestore.rules (allow create/update untuk koleksi unitWip).
   int get nilaiC2 {
     switch (statusSparepart) {
       case 'ready':
@@ -62,9 +49,6 @@ class UnitWip {
     }
   }
 
-  /// Konversi statusSpkAsuransi (string kualitatif) -> nilai kuantitatif C3,
-  /// persis tabel 4.1.3 di laporan. Harus sinkron dengan whitelist di
-  /// firestore.rules (allow create/update untuk koleksi unitWip).
   int get nilaiC3 {
     switch (statusSpkAsuransi) {
       case 'disetujui':
@@ -98,7 +82,7 @@ class UnitWip {
       estimasiBiaya: (data['estimasiBiaya'] as num).toDouble(),
       statusPengerjaan: data['statusPengerjaan'] as String,
       createdBy: data['createdBy'] as String,
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 

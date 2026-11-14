@@ -91,6 +91,14 @@ class UnitWipRepository {
     await recomputeAndSaveRanking();
   }
 
+  /// Cek apakah No. WO sudah dipakai unit lain.
+  /// [exceptUnitId] diisi saat mode edit, supaya unit yang sedang diedit
+  /// tidak dianggap bentrok dengan dirinya sendiri.
+  Future<bool> isNoWOTaken(String noWO, {String? exceptUnitId}) async {
+    final snap = await _unitWipCol.where('noWO', isEqualTo: noWO).limit(2).get();
+    return snap.docs.any((d) => d.id != exceptUnitId);
+  }
+
   Future<void> terbitkanInstruksi(String unitId) {
     return updateUnitFields(unitId, {'statusPengerjaan': 'sedang_dikerjakan'});
   }
