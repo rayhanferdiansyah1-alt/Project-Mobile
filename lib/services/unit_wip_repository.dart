@@ -66,6 +66,7 @@ class UnitWipRepository {
         .map((snapshot) =>
             snapshot.docs.map((doc) => UnitWip.fromFirestore(doc)).toList());
   }
+
   Stream<List<RankingEntry>> watchHasilRanking() {
     return _hasilRankingCol
         .orderBy('peringkat')
@@ -90,10 +91,15 @@ class UnitWipRepository {
     await recomputeAndSaveRanking();
   }
 
+  Future<void> terbitkanInstruksi(String unitId) {
+    return updateUnitFields(unitId, {'statusPengerjaan': 'sedang_dikerjakan'});
+  }
+
   Future<void> deleteUnit(String unitId) async {
     await _unitWipCol.doc(unitId).delete();
     await recomputeAndSaveRanking();
   }
+
 
   Future<void> recomputeAndSaveRanking() async {
     final unitSnapshot = await _unitWipCol

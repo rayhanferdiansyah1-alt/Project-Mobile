@@ -41,6 +41,19 @@ String labelSpk(String status) {
   }
 }
 
+String labelPengerjaan(String status) {
+  switch (status) {
+    case 'menunggu':
+      return 'Menunggu';
+    case 'sedang_dikerjakan':
+      return 'Sedang Dikerjakan';
+    case 'selesai':
+      return 'Selesai';
+    default:
+      return status;
+  }
+}
+
 bool isSiapDikerjakan({required String statusSparepart, required String statusSpkAsuransi}) {
   return statusSparepart == 'ready' && statusSpkAsuransi == 'disetujui';
 }
@@ -59,8 +72,16 @@ String rekomendasiText({
   required String statusSpkAsuransi,
   required int jumlahPanel,
   required int agingHari,
+  String statusPengerjaan = 'menunggu',
 }) {
   final label = prioritasLabel(peringkat, totalUnit);
+
+  if (statusPengerjaan == 'sedang_dikerjakan') {
+    return '$label: sedang dikerjakan (aging $agingHari hari, $jumlahPanel panel).';
+  }
+  if (statusPengerjaan == 'selesai') {
+    return '$label: pengerjaan selesai.';
+  }
 
   if (isSiapDikerjakan(statusSparepart: statusSparepart, statusSpkAsuransi: statusSpkAsuransi)) {
     return '$label: kerjakan segera (aging $agingHari hari, $jumlahPanel panel, '

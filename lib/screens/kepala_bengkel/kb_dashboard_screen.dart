@@ -8,7 +8,7 @@ import '../../widgets/score_ring.dart';
 import '../../widgets/staggered_fade_in.dart';
 import 'kb_unit_detail_screen.dart';
 
-enum _FilterMode { semua, siap, ditahan }
+enum _FilterMode { semua, siap, ditahan, dikerjakan }
 
 class KbDashboardScreen extends StatefulWidget {
   const KbDashboardScreen({super.key});
@@ -23,10 +23,20 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
   bool _isRecomputing = false;
   _FilterMode _filter = _FilterMode.semua;
 
+  // Stream dibuat sekali, bukan tiap build, supaya tidak berlangganan ulang
+  // setiap kali filter diganti.
+  late final Stream<List<UnitWip>> _unitStream = _repo.watchUnitWip();
+  late final Stream<List<RankingEntry>> _rankingStream = _repo.watchHasilRanking();
+
   Future<void> _manualRecompute() async {
     setState(() => _isRecomputing = true);
     try {
       await _repo.recomputeAndSaveRanking();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ranking berhasil dihitung ulang.')),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -40,7 +50,7 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
   Future<void> _terbitkanInstruksi(UnitWip unit) async {
     setState(() => _processingUnitId = unit.id);
     try {
-      await _repo.updateUnitFields(unit.id, {'statusPengerjaan': 'sedang_dikerjakan'});
+      await _repo.terbitkanInstruksi(unit.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Instruksi diterbitkan untuk ${unit.noWO}')),
@@ -95,7 +105,7 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F1F4),
       body: StreamBuilder<List<UnitWip>>(
-        stream: _repo.watchUnitWip(),
+        stream: _unitStream,
         builder: (context, unitSnapshot) {
           if (unitSnapshot.hasError) {
             return Center(child: Text('Terjadi kesalahan: ${unitSnapshot.error}'));
@@ -106,7 +116,7 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
           final unitById = {for (final u in unitSnapshot.data!) u.id: u};
 
           return StreamBuilder<List<RankingEntry>>(
-            stream: _repo.watchHasilRanking(),
+            stream: _rankingStream,
             builder: (context, rankingSnapshot) {
               if (rankingSnapshot.hasError) {
                 return Center(child: Text('Terjadi kesalahan: ${rankingSnapshot.error}'));
@@ -117,30 +127,45 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
 
               final ranking = rankingSnapshot.data!;
               final totalUnit = ranking.length;
-              final siapCount = ranking.where((e) {
+              // Hanya unit yang masih 'menunggu' yang dihitung siap/ditahan.
+              // Unit yang sudah diinstruksikan tetap tampil di ranking, tapi
+              // dipisah lewat tab "Dikerjakan".
+              bool isMenunggu(UnitWip u) => u.statusPengerjaan == 'menunggu';
+              bool isSiap(UnitWip u) => isSiapDikerjakan(
+                    statusSparepart: u.statusSparepart,
+                    statusSpkAsuransi: u.statusSpkAsuransi,
+                  );
+
+              var siapCount = 0;
+              var ditahanCount = 0;
+              String? heroUnitId; // unit 'menunggu' dengan peringkat tertinggi
+              DateTime? dihitungPada;
+              for (final e in ranking) {
+                if (dihitungPada == null || e.dihitungPada.isAfter(dihitungPada)) {
+                  dihitungPada = e.dihitungPada;
+                }
                 final u = unitById[e.unitId];
-                if (u == null) return false;
-                return isSiapDikerjakan(
-                  statusSparepart: u.statusSparepart,
-                  statusSpkAsuransi: u.statusSpkAsuransi,
-                );
-              }).length;
-              final ditahanCount = totalUnit - siapCount;
+                if (u == null || !isMenunggu(u)) continue;
+                heroUnitId ??= u.id; // ranking sudah terurut per peringkat
+                if (isSiap(u)) {
+                  siapCount++;
+                } else {
+                  ditahanCount++;
+                }
+              }
 
               final filtered = ranking.where((e) {
                 final u = unitById[e.unitId];
                 if (u == null) return false;
-                final siap = isSiapDikerjakan(
-                  statusSparepart: u.statusSparepart,
-                  statusSpkAsuransi: u.statusSpkAsuransi,
-                );
                 switch (_filter) {
                   case _FilterMode.semua:
                     return true;
                   case _FilterMode.siap:
-                    return siap;
+                    return isMenunggu(u) && isSiap(u);
                   case _FilterMode.ditahan:
-                    return !siap;
+                    return isMenunggu(u) && !isSiap(u);
+                  case _FilterMode.dikerjakan:
+                    return !isMenunggu(u);
                 }
               }).toList();
 
@@ -152,6 +177,7 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                       totalUnit: totalUnit,
                       siapCount: siapCount,
                       ditahanCount: ditahanCount,
+                      dihitungPada: dihitungPada,
                       isRecomputing: _isRecomputing,
                       onRefresh: _manualRecompute,
                     ),
@@ -199,7 +225,7 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                               statusSparepart: unit.statusSparepart,
                               statusSpkAsuransi: unit.statusSpkAsuransi,
                             );
-                            final isHero = entry.peringkat == 1;
+                            final isHero = unit.id == heroUnitId;
 
                             return StaggeredFadeIn(
                               index: index,
@@ -243,6 +269,7 @@ class _Header extends StatelessWidget {
     required this.totalUnit,
     required this.siapCount,
     required this.ditahanCount,
+    required this.dihitungPada,
     required this.isRecomputing,
     required this.onRefresh,
   });
@@ -251,6 +278,7 @@ class _Header extends StatelessWidget {
   final int totalUnit;
   final int siapCount;
   final int ditahanCount;
+  final DateTime? dihitungPada;
   final bool isRecomputing;
   final VoidCallback onRefresh;
 
@@ -331,6 +359,17 @@ class _Header extends StatelessWidget {
                 fontSize: 12.5,
               ),
             ),
+            if (dihitungPada != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  'Ranking dihitung ${_waktu(dihitungPada!)}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 11,
+                  ),
+                ),
+              ),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -366,6 +405,12 @@ class _Header extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _waktu(DateTime d) {
+    final hh = d.hour.toString().padLeft(2, '0');
+    final mm = d.minute.toString().padLeft(2, '0');
+    return '${d.day} ${_bulan(d.month)} ${d.year}, $hh:$mm';
   }
 
   String _bulan(int m) {
@@ -450,12 +495,15 @@ class _FilterTabs extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
             ),
             alignment: Alignment.center,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : Colors.grey.shade600,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 13,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : Colors.grey.shade600,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 13,
+                ),
               ),
             ),
           ),
@@ -481,6 +529,7 @@ class _FilterTabs extends StatelessWidget {
           tab(_FilterMode.semua, 'Semua'),
           tab(_FilterMode.siap, 'Siap'),
           tab(_FilterMode.ditahan, 'Ditahan'),
+          tab(_FilterMode.dikerjakan, 'Dikerjakan'),
         ],
       ),
     );
@@ -520,6 +569,18 @@ class _PriorityCard extends StatelessWidget {
     final fgColor = isHero ? Colors.white : const Color(0xFF14181F);
     final mutedColor = isHero ? Colors.white.withValues(alpha: 0.75) : Colors.grey.shade600;
     final ringColor = isHero ? Colors.amber : color;
+    final dikerjakan = statusPengerjaan != 'menunggu';
+    final dotColor = dikerjakan
+        ? const Color(0xFF3B82F6)
+        : (siap ? const Color(0xFF34D399) : const Color(0xFFFFB020));
+    final statusLabel = dikerjakan
+        ? labelPengerjaan(statusPengerjaan)
+        : (siap ? 'Siap dikerjakan' : 'Ditahan');
+    final statusColor = dikerjakan
+        ? (isHero ? Colors.lightBlueAccent.shade100 : const Color(0xFF1D4ED8))
+        : (siap
+            ? (isHero ? Colors.greenAccent.shade100 : const Color(0xFF1F9D6B))
+            : (isHero ? Colors.amber.shade100 : const Color(0xFFB36B00)));
 
     return Material(
       color: Colors.transparent,
@@ -550,7 +611,7 @@ class _PriorityCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isHero
                       ? Colors.amber
-                      : (isHero ? primary : primary.withValues(alpha: 0.1)),
+                      : primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Text(
@@ -588,6 +649,7 @@ class _PriorityCard extends StatelessWidget {
                         statusSpkAsuransi: unit.statusSpkAsuransi,
                         jumlahPanel: unit.jumlahPanel,
                         agingHari: unit.agingHari,
+                        statusPengerjaan: statusPengerjaan,
                       ),
                       style: TextStyle(fontSize: 12, color: mutedColor, height: 1.3),
                     ),
@@ -608,60 +670,50 @@ class _PriorityCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: siap ? const Color(0xFF34D399) : const Color(0xFFFFB020),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              siap ? 'Siap dikerjakan' : 'Ditahan',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: siap
-                                    ? (isHero ? Colors.greenAccent.shade100 : const Color(0xFF1F9D6B))
-                                    : (isHero ? Colors.amber.shade100 : const Color(0xFFB36B00)),
-                              ),
-                            ),
-                          ],
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor),
                         ),
-                        if (statusPengerjaan == 'menunggu')
-                          SizedBox(
-                            height: 34,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isHero ? Colors.amber : primary,
-                                foregroundColor: isHero ? Colors.black87 : Colors.white,
-                                disabledBackgroundColor: Colors.grey.shade300,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 14),
-                              ),
-                              onPressed: (siap && !isProcessing) ? onTerbitkanInstruksi : null,
-                              child: isProcessing
-                                  ? const SizedBox(
-                                      width: 14, height: 14,
-                                      child: CircularProgressIndicator(strokeWidth: 2))
-                                  : const Text('Terbitkan Instruksi',
-                                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            statusLabel,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: statusColor,
                             ),
-                          )
-                        else
-                          Chip(
-                            label: Text(statusPengerjaan, style: const TextStyle(fontSize: 11)),
-                            backgroundColor: Colors.blue.shade50,
                           ),
+                        ),
                       ],
                     ),
+                    if (!dikerjakan) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 38,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isHero ? Colors.amber : primary,
+                            foregroundColor: isHero ? Colors.black87 : Colors.white,
+                            disabledBackgroundColor: Colors.grey.shade300,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(19),
+                            ),
+                          ),
+                          onPressed: (siap && !isProcessing) ? onTerbitkanInstruksi : null,
+                          child: isProcessing
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Text('Terbitkan Instruksi',
+                                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
