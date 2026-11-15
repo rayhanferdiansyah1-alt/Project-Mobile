@@ -27,17 +27,26 @@ class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
   }
 
   Future<void> _ubahSparepart(UnitWip unit) async {
-    final changed = await showSparepartUpdateSheet(context, unit: unit, repo: _repo);
-    if (changed == true && mounted) _showSuccessSnackbar();
+    final changed = await showSparepartUpdateSheet(
+      context,
+      unit: unit,
+      repo: _repo,
+    );
+    _notifyStatusChanged(changed);
   }
 
   Future<void> _ubahSpk(UnitWip unit) async {
     final changed = await showSpkUpdateSheet(context, unit: unit, repo: _repo);
-    if (changed == true && mounted) _showSuccessSnackbar();
+    _notifyStatusChanged(changed);
   }
 
-  void _showSuccessSnackbar() {
-    showSuccessSnackbar(context, 'Status berhasil diperbarui. Ranking dihitung ulang.');
+  void _notifyStatusChanged(bool? changed) {
+    if (changed == true && mounted) {
+      showAppSnackbar(
+        context,
+        'Status berhasil diperbarui. Ranking dihitung ulang.',
+      );
+    }
   }
 
   @override
@@ -66,23 +75,26 @@ class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
             slivers: [
               const SliverToBoxAdapter(child: PartmanHeader()),
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                  child: SegmentFilter<_FilterMode>(
-                    current: _filter,
-                    items: [
-                      SegmentItem(
-                        _FilterMode.perluUpdate,
-                        'Perlu update',
-                        count: perluUpdateCount,
-                      ),
-                      SegmentItem(
-                        _FilterMode.semua,
-                        'Semua',
-                        count: allUnits.length,
-                      ),
-                    ],
-                    onChanged: (f) => setState(() => _filter = f),
+                child: AppContent(
+                  maxWidth: 860,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                    child: SegmentFilter<_FilterMode>(
+                      current: _filter,
+                      items: [
+                        SegmentItem(
+                          _FilterMode.perluUpdate,
+                          'Perlu update',
+                          count: perluUpdateCount,
+                        ),
+                        SegmentItem(
+                          _FilterMode.semua,
+                          'Semua',
+                          count: allUnits.length,
+                        ),
+                      ],
+                      onChanged: (f) => setState(() => _filter = f),
+                    ),
                   ),
                 ),
               ),
@@ -105,12 +117,13 @@ class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final unit = filtered[index];
-                        return StaggeredFadeIn(
-                          key: ValueKey('${_filter.name}-${unit.id}'),
-                          index: index,
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final unit = filtered[index];
+                      return StaggeredFadeIn(
+                        key: ValueKey('${_filter.name}-${unit.id}'),
+                        index: index,
+                        child: AppContent(
+                          maxWidth: 860,
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: PartmanUnitCard(
@@ -119,10 +132,9 @@ class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
                               onUbahSpk: () => _ubahSpk(unit),
                             ),
                           ),
-                        );
-                      },
-                      childCount: filtered.length,
-                    ),
+                        ),
+                      );
+                    }, childCount: filtered.length),
                   ),
                 ),
             ],

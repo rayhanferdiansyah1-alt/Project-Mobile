@@ -78,37 +78,63 @@ class ScoreSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Transform.translate(
-      offset: const Offset(0, -46),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.line),
-              boxShadow: AppShadows.soft,
+    final statusColor = siap ? AppColors.success : AppColors.warning;
+    return FadeSlideIn(
+      delay: const Duration(milliseconds: 120),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: appCardDecoration(
+          radius: 24,
+          shadow: AppShadows.soft,
+          border: AppColors.line.withValues(alpha: 0.85),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line),
+              ),
+              child: ScoreRing(
+                value: value,
+                size: 88,
+                strokeWidth: 8,
+                color: statusColor,
+                decimals: 4,
+              ),
             ),
-            child: ScoreRing(
-              value: value,
-              size: 92,
-              strokeWidth: 8,
-              color: siap ? AppColors.success : AppColors.warning,
-              decimals: 4,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'NILAI PRIORITAS',
+                    style: AppText.caption.copyWith(
+                      color: AppColors.brandDeep,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  StatusChip(
+                    label: siap ? 'Siap dikerjakan' : 'Ditahan',
+                    level: siap ? StatusLevel.good : StatusLevel.warn,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    siap
+                        ? 'Persyaratan unit telah terpenuhi.'
+                        : 'Menunggu kelengkapan status pendukung.',
+                    style: AppText.caption,
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          FadeSlideIn(
-            delay: const Duration(milliseconds: 300),
-            dy: 0.2,
-            child: StatusChip(
-              label: siap ? 'Siap dikerjakan' : 'Ditahan',
-              level: siap ? StatusLevel.good : StatusLevel.warn,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -149,7 +175,9 @@ class TotalScoreCard extends StatelessWidget {
                 value: v,
                 minHeight: 10,
                 backgroundColor: AppColors.lineSoft,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.brand),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.brand,
+                ),
               ),
             ),
           ),
@@ -208,8 +236,10 @@ class CriteriaTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.sageSoft,
                     borderRadius: BorderRadius.circular(7),
@@ -259,8 +289,9 @@ class CriteriaTile extends StatelessWidget {
                   value: v,
                   minHeight: 6,
                   backgroundColor: AppColors.lineSoft,
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.brand),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppColors.brand,
+                  ),
                 ),
               ),
             ),

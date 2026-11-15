@@ -36,7 +36,9 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
     _noWOCtrl = TextEditingController(text: u?.noWO ?? '');
     _tipeCtrl = TextEditingController(text: u?.tipeKendaraan ?? '');
     _panelCtrl = TextEditingController(text: u?.jumlahPanel.toString() ?? '');
-    _biayaCtrl = TextEditingController(text: u?.estimasiBiaya.toStringAsFixed(0) ?? '');
+    _biayaCtrl = TextEditingController(
+      text: u?.estimasiBiaya.toStringAsFixed(0) ?? '',
+    );
     _tanggalMasuk = u?.tanggalMasuk ?? DateTime.now();
   }
 
@@ -122,6 +124,53 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
     }
   }
 
+  Widget _panelAndCostFields() {
+    final panelField = FieldBox(
+      label: 'Jumlah panel',
+      child: TextFormField(
+        controller: _panelCtrl,
+        keyboardType: TextInputType.number,
+        decoration: plainInputDecoration('Isi dalam jumlah panel'),
+        validator: (value) {
+          final number = int.tryParse(value ?? '');
+          if (number == null || number <= 0) return 'Harus angka bulat > 0';
+          return null;
+        },
+      ),
+    );
+    final costField = FieldBox(
+      label: 'Estimasi biaya (Rp)',
+      child: TextFormField(
+        controller: _biayaCtrl,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: plainInputDecoration('Isi dalam rupiah penuh'),
+        validator: (value) {
+          final number = double.tryParse(value ?? '');
+          if (number == null || number <= 0) return 'Harus angka > 0';
+          return null;
+        },
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 560) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: panelField),
+              const SizedBox(width: 14),
+              Expanded(child: costField),
+            ],
+          );
+        }
+        return Column(
+          children: [panelField, const SizedBox(height: 14), costField],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,103 +179,138 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
         slivers: [
           SliverToBoxAdapter(child: FormHeader(isEditMode: _isEditMode)),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FadeSlideIn(
-                      delay: const Duration(milliseconds: 120),
-                      child: FieldBox(
-                      label: 'No. WO / PKB',
-                      child: TextFormField(
-                        controller: _noWOCtrl,
-                        decoration: plainInputDecoration('Contoh: 150021-BPM-2026-11-000001'),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-                      ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    FadeSlideIn(
-                      delay: const Duration(milliseconds: 190),
-                      child: FieldBox(
-                      label: 'Tipe kendaraan',
-                      child: TextFormField(
-                        controller: _tipeCtrl,
-                        decoration: plainInputDecoration('Contoh: Mitsubishi Xpander'),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
-                      ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    FadeSlideIn(
-                      delay: const Duration(milliseconds: 260),
-                      child: FieldBox(
-                      label: 'Tanggal masuk',
-                      child: InkWell(
-                        onTap: _pickTanggal,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${_tanggalMasuk.day}/${_tanggalMasuk.month}/${_tanggalMasuk.year}',
-                              style: AppText.body.copyWith(fontSize: 14.5),
-                            ),
-                            const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.muted),
-                          ],
+            child: AppContent(
+              maxWidth: 760,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 80),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.sageSoft,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: AppColors.line),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: AppColors.card.withValues(alpha: 0.8),
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                child: const Icon(
+                                  Icons.directions_car_filled_rounded,
+                                  color: AppColors.brandDeep,
+                                  size: 19,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _isEditMode
+                                          ? 'Perbarui data unit'
+                                          : 'Catat unit baru',
+                                      style: AppText.subheading,
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      'Isi informasi kendaraan dan estimasi pekerjaan.',
+                                      style: AppText.caption,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 20),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 120),
+                        child: FieldBox(
+                          label: 'No. WO / PKB',
+                          child: TextFormField(
+                            controller: _noWOCtrl,
+                            decoration: plainInputDecoration(
+                              'Contoh: 150021-BPM-2026-11-000001',
+                            ),
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Wajib diisi'
+                                : null,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    FadeSlideIn(
-                      delay: const Duration(milliseconds: 330),
-                      child: FieldBox(
-                      label: 'Jumlah panel',
-                      child: TextFormField(
-                        controller: _panelCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: plainInputDecoration('Isi dalam jumlah panel'),
-                        validator: (v) {
-                          final n = int.tryParse(v ?? '');
-                          if (n == null || n <= 0) return 'Harus angka bulat > 0';
-                          return null;
-                        },
+                      const SizedBox(height: 14),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 190),
+                        child: FieldBox(
+                          label: 'Tipe kendaraan',
+                          child: TextFormField(
+                            controller: _tipeCtrl,
+                            decoration: plainInputDecoration(
+                              'Contoh: Mitsubishi Xpander',
+                            ),
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Wajib diisi'
+                                : null,
+                          ),
+                        ),
                       ),
+                      const SizedBox(height: 14),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 260),
+                        child: FieldBox(
+                          label: 'Tanggal masuk',
+                          child: InkWell(
+                            onTap: _pickTanggal,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${_tanggalMasuk.day}/${_tanggalMasuk.month}/${_tanggalMasuk.year}',
+                                  style: AppText.body.copyWith(fontSize: 14.5),
+                                ),
+                                const Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 18,
+                                  color: AppColors.muted,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    FadeSlideIn(
-                      delay: const Duration(milliseconds: 400),
-                      child: FieldBox(
-                      label: 'Estimasi biaya (Rp)',
-                      child: TextFormField(
-                        controller: _biayaCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: plainInputDecoration('Isi dalam rupiah penuh'),
-                        validator: (v) {
-                          final n = double.tryParse(v ?? '');
-                          if (n == null || n <= 0) return 'Harus angka > 0';
-                          return null;
-                        },
+                      const SizedBox(height: 14),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 330),
+                        child: _panelAndCostFields(),
                       ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Status sparepart dan SPK asuransi diisi oleh Partman. Nilai awal unit baru: Back Order dan Proses Klaim.',
+                        style: AppText.caption,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Status sparepart dan SPK asuransi diisi oleh Partman. Nilai awal unit baru: Back Order dan Proses Klaim.',
-                      style: AppText.caption,
-                    ),
-                    const SizedBox(height: 28),
-                    CancelSaveButtons(
-                      isSaving: _isSaving,
-                      onCancel: () => Navigator.pop(context),
-                      onSave: _submit,
-                      saveFlex: 2,
-                    ),
-                  ],
+                      const SizedBox(height: 28),
+                      CancelSaveButtons(
+                        isSaving: _isSaving,
+                        onCancel: () => Navigator.pop(context),
+                        onSave: _submit,
+                        saveFlex: 2,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

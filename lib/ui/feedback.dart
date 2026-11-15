@@ -68,11 +68,6 @@ void showAppSnackbar(
     );
 }
 
-/// Kompatibilitas: snackbar sukses.
-void showSuccessSnackbar(BuildContext context, String message) {
-  showAppSnackbar(context, message);
-}
-
 /// Dialog konfirmasi hapus unit WIP.
 class DeleteConfirmDialog extends StatelessWidget {
   const DeleteConfirmDialog({
@@ -107,7 +102,10 @@ class DeleteConfirmDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Hapus unit ini?', style: AppText.heading.copyWith(fontSize: 18)),
+            Text(
+              'Hapus unit ini?',
+              style: AppText.heading.copyWith(fontSize: 18),
+            ),
             const SizedBox(height: 8),
             Text(
               '${unit.noWO} (${unit.tipeKendaraan}) akan dihapus dari daftar WIP, '
@@ -261,8 +259,10 @@ class _SkeletonListState extends State<SkeletonList>
     duration: const Duration(milliseconds: 900),
   )..repeat(reverse: true);
 
-  late final Animation<double> _opacity = Tween<double>(begin: 0.45, end: 1)
-      .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
+  late final Animation<double> _opacity = Tween<double>(
+    begin: 0.45,
+    end: 1,
+  ).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
 
   @override
   void dispose() {

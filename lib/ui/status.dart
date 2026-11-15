@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'feedback.dart';
 import 'forms.dart';
 import 'motion.dart';
 import 'theme/app_colors.dart';
@@ -29,23 +30,9 @@ class StatusChip extends StatelessWidget {
     VoidCallback? onTap,
     String prefix = '',
   }) {
-    String text;
-    switch (status) {
-      case 'ready':
-        text = 'Ready';
-        break;
-      case 'order_eo':
-        text = 'Order EO';
-        break;
-      case 'back_order':
-        text = 'Back Order';
-        break;
-      default:
-        text = status;
-    }
     return StatusChip(
       key: key,
-      label: '$prefix$text',
+      label: '$prefix${_statusLabel(status, sparepartStatusOptions)}',
       level: AppColors.levelOfValue(status),
       onTap: onTap,
     );
@@ -58,23 +45,9 @@ class StatusChip extends StatelessWidget {
     VoidCallback? onTap,
     String prefix = '',
   }) {
-    String text;
-    switch (status) {
-      case 'disetujui':
-        text = 'Disetujui';
-        break;
-      case 'proses_klaim':
-        text = 'Proses Klaim';
-        break;
-      case 'bermasalah':
-        text = 'Bermasalah';
-        break;
-      default:
-        text = status;
-    }
     return StatusChip(
       key: key,
-      label: '$prefix$text',
+      label: '$prefix${_statusLabel(status, spkStatusOptions)}',
       level: AppColors.levelOfValue(status),
       onTap: onTap,
     );
@@ -113,6 +86,7 @@ class StatusChip extends StatelessWidget {
           Text(
             label,
             maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppText.label.copyWith(
               color: pal.fg,
               fontWeight: FontWeight.w600,
@@ -137,7 +111,57 @@ class StatusOption {
   final String title;
   final String desc;
   final int skala;
-  const StatusOption(this.value, this.title, this.desc, this.skala);
+  final String? label;
+  const StatusOption(
+    this.value,
+    this.title,
+    this.desc,
+    this.skala, {
+    this.label,
+  });
+}
+
+/// Definisi status menjadi satu sumber untuk chip, formulir, dan bottom sheet.
+const sparepartStatusOptions = <StatusOption>[
+  StatusOption('ready', 'Ready', 'Suku cadang lengkap / tersedia', 5),
+  StatusOption('order_eo', 'Order EO', 'Suku cadang dalam proses pemesanan', 3),
+  StatusOption('back_order', 'Back Order', 'Suku cadang kosong dari pabrik', 1),
+];
+
+const spkStatusOptions = <StatusOption>[
+  StatusOption(
+    'disetujui',
+    'Disetujui / Cash',
+    'Surat jaminan / SPK asuransi disetujui atau cash',
+    5,
+    label: 'Disetujui',
+  ),
+  StatusOption(
+    'proses_klaim',
+    'Proses Klaim',
+    'Dokumen masih dalam proses pengajuan klaim / approval',
+    3,
+  ),
+  StatusOption(
+    'bermasalah',
+    'Bermasalah',
+    'Dokumen jaminan belum disetujui / bermasalah',
+    1,
+  ),
+];
+
+String statusOptionTitle(String value, List<StatusOption> options) {
+  for (final option in options) {
+    if (option.value == value) return option.title;
+  }
+  return '$value (tidak valid)';
+}
+
+String _statusLabel(String value, List<StatusOption> options) {
+  for (final option in options) {
+    if (option.value == value) return option.label ?? option.title;
+  }
+  return value;
 }
 
 /// Kartu pilihan untuk satu [StatusOption]. Pilihan aktif berganti dengan
@@ -171,6 +195,7 @@ class StatusOptionTile extends StatelessWidget {
             width: selected ? 1.6 : 1,
           ),
           borderRadius: BorderRadius.circular(16),
+          boxShadow: selected ? AppShadows.soft : null,
         ),
         child: Row(
           children: [
@@ -215,9 +240,117 @@ class StatusOptionTile extends StatelessWidget {
   }
 }
 
+/// Pembungkus bersama untuk validasi, pemilihan, penyimpanan, dan error status.
+Future<bool?> showStatusUpdateSheet(
+  BuildContext context, {
+  required String title,
+  required String subtitle,
+  required List<StatusOption> options,
+  required String selected,
+  required Future<void> Function(String value) onSave,
+}) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: AppColors.ink.withValues(alpha: 0.3),
+    builder: (_) => _StatusUpdateSheet(
+      title: title,
+      subtitle: subtitle,
+      options: options,
+      selected: selected,
+      onSave: onSave,
+    ),
+  );
+}
+
+class _StatusUpdateSheet extends StatefulWidget {
+  const _StatusUpdateSheet({
+    required this.title,
+    required this.subtitle,
+    required this.options,
+    required this.selected,
+    required this.onSave,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<StatusOption> options;
+  final String selected;
+  final Future<void> Function(String value) onSave;
+
+  @override
+  State<_StatusUpdateSheet> createState() => _StatusUpdateSheetState();
+}
+
+class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
+  late String _selected = widget.selected;
+  bool _isSaving = false;
+
+  String _saveErrorMessage(Object error) {
+    final detail = error.toString().toLowerCase();
+    if (detail.contains('permission-denied')) {
+      return 'Akses Firebase menolak perubahan ini. Periksa status unit sebelum '
+          'mencoba lagi, atau hubungi admin.';
+    }
+    if (detail.contains('unavailable') || detail.contains('network')) {
+      return 'Koneksi ke server bermasalah. Periksa koneksi lalu coba lagi.';
+    }
+    return 'Gagal menyimpan status. Coba lagi.';
+  }
+
+  Future<void> _save() async {
+    if (_isSaving) return;
+    if (!widget.options.any((option) => option.value == _selected)) {
+      showAppSnackbar(
+        context,
+        'Pilih salah satu status terlebih dahulu.',
+        kind: SnackKind.info,
+      );
+      return;
+    }
+    if (_selected == widget.selected) {
+      Navigator.pop(context, false);
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await widget.onSave(_selected);
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      showAppSnackbar(context, _saveErrorMessage(error), kind: SnackKind.error);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    return AnimatedPadding(
+      duration: AppMotion.base,
+      curve: AppMotion.out,
+      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: media.size.height * 0.9),
+        child: StatusUpdateSheetView(
+          title: widget.title,
+          subtitle: widget.subtitle,
+          options: widget.options,
+          selected: _selected,
+          onSelect: (value) => setState(() => _selected = value),
+          isSaving: _isSaving,
+          onCancel: () => Navigator.pop(context, false),
+          onSave: _save,
+        ),
+      ),
+    );
+  }
+}
+
 /// Tampilan bottom sheet "Ubah status ..." (handle, judul, daftar pilihan,
-/// tombol). Dipakai bersama oleh sheet Sparepart dan sheet SPK Asuransi;
-/// state dan logika simpan tetap milik masing-masing sheet.
+/// tombol). Dipakai oleh editor status bersama agar dua alur tetap selaras.
 class StatusUpdateSheetView extends StatelessWidget {
   const StatusUpdateSheetView({
     super.key,
@@ -252,7 +385,7 @@ class StatusUpdateSheetView extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,

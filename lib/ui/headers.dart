@@ -14,44 +14,49 @@ class HeaderIconButton extends StatelessWidget {
     super.key,
     required this.icon,
     required this.onTap,
+    this.tooltip = 'Aksi',
     this.isLoading = false,
   });
 
   final IconData icon;
   final VoidCallback onTap;
+  final String tooltip;
   final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
-    return Pressable(
-      scale: 0.88,
-      onTap: isLoading ? null : onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AppColors.card.withValues(alpha: 0.7),
-          shape: BoxShape.circle,
-        ),
-        child: AnimatedSwitcher(
-          duration: AppMotion.base,
-          child: isLoading
-              ? const SizedBox(
-                  key: ValueKey('loading'),
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.brand,
+    return Tooltip(
+      message: tooltip,
+      child: Pressable(
+        scale: 0.88,
+        onTap: isLoading ? null : onTap,
+        child: Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.card.withValues(alpha: 0.7),
+            shape: BoxShape.circle,
+          ),
+          child: AnimatedSwitcher(
+            duration: AppMotion.base,
+            child: isLoading
+                ? const SizedBox(
+                    key: ValueKey('loading'),
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.brand,
+                    ),
+                  )
+                : Icon(
+                    icon,
+                    key: const ValueKey('icon'),
+                    size: 19,
+                    color: AppColors.brandDeep,
                   ),
-                )
-              : Icon(
-                  icon,
-                  key: const ValueKey('icon'),
-                  size: 19,
-                  color: AppColors.brandDeep,
-                ),
+          ),
         ),
       ),
     );
@@ -66,6 +71,7 @@ class HeaderBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return HeaderIconButton(
       icon: Icons.arrow_back_rounded,
+      tooltip: 'Kembali',
       onTap: () => Navigator.pop(context),
     );
   }
@@ -97,54 +103,97 @@ class AppHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, top + 12, 16, bottomPadding),
-      decoration: const BoxDecoration(
-        color: AppColors.sage,
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(AppRadius.header),
-        ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(
+        bottom: Radius.circular(AppRadius.header),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (leading != null) ...[leading!, const SizedBox(width: 10)],
-              Expanded(
-                child: Text(
-                  eyebrow,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.label.copyWith(color: AppColors.brandDeep),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(20, top + 12, 16, bottomPadding),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.sageSoft, AppColors.sage],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -52,
+              top: -38,
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
                 ),
               ),
-              ...actions.expand<Widget>(
-                (w) => <Widget>[const SizedBox(width: 8), w],
+            ),
+            Positioned(
+              right: 64,
+              top: 54,
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.card.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          FadeSlideIn(
-            delay: const Duration(milliseconds: 60),
-            child: Text(title, style: AppText.title.copyWith(fontSize: 27)),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 4),
-            FadeSlideIn(
-              delay: const Duration(milliseconds: 140),
-              child: Text(subtitle!, style: AppText.bodyMuted),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (leading != null) ...[
+                      leading!,
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(
+                      child: Text(
+                        eyebrow,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.label.copyWith(
+                          color: AppColors.brandDeep,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    ...actions.expand<Widget>(
+                      (w) => <Widget>[const SizedBox(width: 8), w],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 60),
+                  child: Text(
+                    title,
+                    style: AppText.title.copyWith(fontSize: 27),
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 140),
+                    child: Text(subtitle!, style: AppText.bodyMuted),
+                  ),
+                ],
+                if (extra != null) ...[
+                  const SizedBox(height: 8),
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 220),
+                    child: extra!,
+                  ),
+                ],
+              ],
             ),
           ],
-          if (extra != null) ...[
-            const SizedBox(height: 8),
-            FadeSlideIn(
-              delay: const Duration(milliseconds: 220),
-              child: extra!,
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -171,8 +220,18 @@ class KbHeader extends StatelessWidget {
   final VoidCallback onRefresh;
 
   static const _bulan = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
   ];
 
   String _waktu(DateTime t) {
@@ -187,11 +246,13 @@ class KbHeader extends StatelessWidget {
     final dihitung = dihitungPada;
 
     return AppHeader(
-      eyebrow: 'Kepala bengkel · ${now.day} ${_bulan[now.month - 1]} ${now.year}',
+      eyebrow:
+          'Kepala bengkel · ${now.day} ${_bulan[now.month - 1]} ${now.year}',
       title: 'Prioritas unit',
       actions: [
         HeaderIconButton(
           icon: Icons.refresh_rounded,
+          tooltip: 'Hitung ulang ranking',
           isLoading: isRecomputing,
           onTap: onRefresh,
         ),
@@ -258,8 +319,8 @@ class _SummaryStat extends StatelessWidget {
   }
 }
 
-/// Header dashboard Service Advisor. [bottomPadding] besar karena kolom
-/// pencarian menimpa tepi bawahnya.
+/// Header dashboard Service Advisor. Ruang bawahnya memberi jarak visual
+/// sebelum kolom pencarian.
 class SaHeader extends StatelessWidget {
   const SaHeader({super.key});
 
@@ -270,7 +331,7 @@ class SaHeader extends StatelessWidget {
       title: 'Data unit WIP',
       subtitle: 'Kelola unit kendaraan yang masuk bengkel',
       actions: [AppUserMenu()],
-      bottomPadding: 46,
+      bottomPadding: 28,
     );
   }
 }
@@ -379,17 +440,28 @@ class _AppUserMenuState extends State<AppUserMenu> {
           offset: const Offset(0, 46),
           tooltip: 'Akun',
           padding: EdgeInsets.zero,
-          child: Container(
-            width: 38,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: AppColors.brand,
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              inisial,
-              style: AppText.subheading.copyWith(color: Colors.white),
+          child: Tooltip(
+            message: 'Akun dan keluar',
+            child: Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.brand, AppColors.brandDeep],
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.card.withValues(alpha: 0.7),
+                ),
+                boxShadow: AppShadows.soft,
+              ),
+              child: Text(
+                inisial,
+                style: AppText.subheading.copyWith(color: Colors.white),
+              ),
             ),
           ),
           itemBuilder: (context) => [

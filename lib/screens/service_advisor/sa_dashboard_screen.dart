@@ -115,10 +115,12 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
           final filtered = q.isEmpty
               ? all
               : all
-                  .where((u) =>
-                      u.noWO.toLowerCase().contains(q) ||
-                      u.tipeKendaraan.toLowerCase().contains(q))
-                  .toList();
+                    .where(
+                      (u) =>
+                          u.noWO.toLowerCase().contains(q) ||
+                          u.tipeKendaraan.toLowerCase().contains(q),
+                    )
+                    .toList();
 
           return NotificationListener<UserScrollNotification>(
             onNotification: _onScroll,
@@ -126,10 +128,10 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
               slivers: [
                 const SliverToBoxAdapter(child: SaHeader()),
                 SliverToBoxAdapter(
-                  child: Transform.translate(
-                    offset: const Offset(0, -24),
+                  child: AppContent(
+                    maxWidth: 860,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
                       child: WipSearchBar(
                         controller: _searchCtrl,
                         onChanged: (v) => setState(() => _query = v),
@@ -143,7 +145,8 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
                     child: EmptyState(
                       icon: Icons.directions_car_outlined,
                       title: 'Belum ada unit WIP',
-                      message: 'Tekan "Tambah unit" untuk memasukkan unit pertama.',
+                      message:
+                          'Tekan "Tambah unit" untuk memasukkan unit pertama.',
                     ),
                   )
                 else if (filtered.isEmpty)
@@ -152,31 +155,33 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
                     child: EmptyState(
                       icon: Icons.search_off_rounded,
                       title: 'Unit tidak ditemukan',
-                      message: 'Coba kata kunci No. WO atau tipe kendaraan lain.',
+                      message:
+                          'Coba kata kunci No. WO atau tipe kendaraan lain.',
                     ),
                   )
                 else
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
                     sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final unit = filtered[index];
-                          return StaggeredFadeIn(
-                            key: ValueKey(unit.id),
-                            index: index,
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final unit = filtered[index];
+                        return StaggeredFadeIn(
+                          key: ValueKey(unit.id),
+                          index: index,
+                          child: AppContent(
+                            maxWidth: 860,
                             child: Padding(
                               padding: const EdgeInsets.only(bottom: 14),
                               child: SaUnitCard(
                                 unit: unit,
-                                onEdit: () => _openForm(context, existingUnit: unit),
+                                onEdit: () =>
+                                    _openForm(context, existingUnit: unit),
                                 onDelete: () => _confirmDelete(context, unit),
                               ),
                             ),
-                          );
-                        },
-                        childCount: filtered.length,
-                      ),
+                          ),
+                        );
+                      }, childCount: filtered.length),
                     ),
                   ),
               ],

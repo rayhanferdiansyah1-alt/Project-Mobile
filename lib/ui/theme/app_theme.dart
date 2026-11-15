@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
@@ -81,7 +80,7 @@ class AppTheme {
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: AppPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: AppPageTransitionsBuilder(),
           TargetPlatform.fuchsia: AppPageTransitionsBuilder(),
           TargetPlatform.linux: AppPageTransitionsBuilder(),
           TargetPlatform.macOS: AppPageTransitionsBuilder(),

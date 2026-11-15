@@ -19,6 +19,7 @@ flutter pub add google_fonts
 | File | Isi |
 |---|---|
 | `ui.dart` | Pintu masuk tunggal (export semua di bawah) |
+| `layout.dart` | `AppContent` untuk lebar konten responsif di layar besar |
 | `theme/app_colors.dart` | Semua warna, `StatusLevel`, `AppColors.status()` |
 | `theme/app_text.dart` | Skala tipografi `AppText` |
 | `theme/app_effects.dart` | `AppRadius`, `AppMotion`, `AppShadows`, `appCardDecoration()` |
@@ -28,7 +29,7 @@ flutter pub add google_fonts
 | `cards.dart` | `PriorityCard`, `SaUnitCard`, `PartmanUnitCard`, `InfoPair` |
 | `scoring.dart` | `ScoreRing`, `ScoreSummary`, `TotalScoreCard`, `CriteriaTile` |
 | `forms.dart` | `AppButton`, `CancelSaveButtons`, `WideActionButton`, `AppFab`, `SegmentFilter`, `WipSearchBar`, `FieldBox` |
-| `status.dart` | `StatusChip`, `StatusOption`, `StatusOptionTile`, `StatusUpdateSheetView` |
+| `status.dart` | `StatusChip`, sumber opsi status, pilihan dan editor status bersama |
 | `feedback.dart` | `showAppSnackbar`, `showDeleteConfirmDialog`, `EmptyState`, `SkeletonList`, `PageSkeleton` |
 | `auth.dart` | `LoginHero`, `LoginGreeting`, `FieldLabel`, dekorasi field, `LoginErrorBanner` |
 
@@ -53,3 +54,5 @@ di `app_colors.dart`.
 - Elemen yang bisa ditekan dibungkus `Pressable` (atau `AppButton`).
 - Daftar yang muncul bertahap memakai `StaggeredFadeIn`.
 - Pesan ke pengguna lewat `showAppSnackbar` (bukan `SnackBar` polos).
+- Gunakan `AppContent` agar daftar dan formulir tidak melebar berlebihan di desktop.
+- Gerakan UI memakai `AppMotion`; animasi dibuat singkat dan konsisten.

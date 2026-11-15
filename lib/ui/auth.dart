@@ -8,65 +8,109 @@ import 'theme/app_text.dart';
 /// Bagian atas halaman login: lingkaran sage lembut (datar, tanpa blur),
 /// monogram, judul aplikasi. Tiap elemen masuk bergiliran.
 class LoginHero extends StatelessWidget {
-  const LoginHero({super.key});
+  const LoginHero({super.key, this.expanded = false});
+
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-
-    return SizedBox(
-      height: 300 + top,
+    return Container(
+      constraints: BoxConstraints(minHeight: expanded ? 360 : 210),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.sageSoft, AppColors.sage],
+        ),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: AppColors.line.withValues(alpha: 0.8)),
+        boxShadow: AppShadows.soft,
+      ),
       child: Stack(
         children: [
-          const Positioned(
-            right: -70,
-            top: -60,
-            child: _SoftCircle(size: 240, color: AppColors.sage),
+          Positioned(
+            right: expanded ? -130 : -96,
+            top: expanded ? -108 : -106,
+            child: _SoftCircle(
+              size: expanded ? 360 : 260,
+              color: AppColors.card.withValues(alpha: 0.44),
+            ),
           ),
           Positioned(
-            right: 40,
-            top: top + 78,
-            child: const _SoftCircle(size: 56, color: AppColors.sageSoft),
+            right: expanded ? 48 : 24,
+            top: expanded ? 154 : 132,
+            child: const _SoftCircle(size: 64, color: AppColors.sage),
+          ),
+          Positioned(
+            right: expanded ? -22 : -34,
+            bottom: expanded ? 94 : 54,
+            child: Icon(
+              Icons.directions_car_filled_rounded,
+              size: expanded ? 270 : 190,
+              color: AppColors.brand.withValues(alpha: 0.08),
+            ),
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(28, top + 48, 28, 0),
+            padding: EdgeInsets.all(expanded ? 38 : 26),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 FadeSlideIn(
+                  delay: const Duration(milliseconds: 40),
                   child: Container(
-                    width: 48,
-                    height: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppColors.brand,
-                      borderRadius: BorderRadius.circular(16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 7,
                     ),
-                    child: Text(
-                      'PP',
-                      style: AppText.heading.copyWith(color: Colors.white),
+                    decoration: BoxDecoration(
+                      color: AppColors.card.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: AppColors.card.withValues(alpha: 0.86),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 14,
+                          color: AppColors.brandDeep,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'WORKSHOP OPERATIONS',
+                          style: AppText.caption.copyWith(
+                            color: AppColors.brandDeep,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 26),
+                const SizedBox(height: 14),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 120),
                   child: Text(
-                    'Prabu Pura Motor Karawang',
-                    style: AppText.label,
+                    'SPK WIP\nBodi dan Cat',
+                    style: AppText.display.copyWith(
+                      fontSize: expanded ? 38 : 31,
+                      height: 1.08,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 10),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 200),
-                  child: Text('SPK WIP\nBodi dan Cat', style: AppText.display),
-                ),
-                const SizedBox(height: 8),
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 280),
                   child: Text(
-                    'Workshop decision support system',
-                    style: AppText.bodyMuted,
+                    'Satu ruang kendali untuk alur kerja bengkel yang lebih tertata.',
+                    style: AppText.bodyMuted.copyWith(
+                      color: AppColors.brandDeep,
+                      fontSize: expanded ? 14 : 12.5,
+                    ),
                   ),
                 ),
               ],
@@ -189,14 +233,13 @@ InputDecoration passwordInputDecoration({
     hint: 'Kata sandi',
     prefix: Icons.lock_outline_rounded,
     suffix: IconButton(
+      tooltip: obscure ? 'Tampilkan kata sandi' : 'Sembunyikan kata sandi',
       onPressed: onToggle,
       icon: AnimatedSwitcher(
         duration: AppMotion.fast,
         transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
         child: Icon(
-          obscure
-              ? Icons.visibility_outlined
-              : Icons.visibility_off_outlined,
+          obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
           key: ValueKey(obscure),
           color: AppColors.muted,
           size: 20,

@@ -24,7 +24,8 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
   // Stream dibuat sekali, bukan tiap build, supaya tidak berlangganan ulang
   // setiap kali filter diganti.
   late final Stream<List<UnitWip>> _unitStream = _repo.watchUnitWip();
-  late final Stream<List<RankingEntry>> _rankingStream = _repo.watchHasilRanking();
+  late final Stream<List<RankingEntry>> _rankingStream = _repo
+      .watchHasilRanking();
 
   Future<void> _manualRecompute() async {
     if (_isRecomputing) return;
@@ -68,11 +69,8 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => KbUnitDetailScreen(
-          unit: unit,
-          entry: entry,
-          totalUnit: totalUnit,
-        ),
+        builder: (_) =>
+            KbUnitDetailScreen(unit: unit, entry: entry, totalUnit: totalUnit),
       ),
     );
   }
@@ -113,9 +111,9 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
               // dipisah lewat tab "Dikerjakan".
               bool isMenunggu(UnitWip u) => u.statusPengerjaan == 'menunggu';
               bool isSiap(UnitWip u) => isSiapDikerjakan(
-                    statusSparepart: u.statusSparepart,
-                    statusSpkAsuransi: u.statusSpkAsuransi,
-                  );
+                statusSparepart: u.statusSparepart,
+                statusSpkAsuransi: u.statusSpkAsuransi,
+              );
 
               var siapCount = 0;
               var ditahanCount = 0;
@@ -123,7 +121,8 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
               String? heroUnitId; // unit 'menunggu' dengan peringkat tertinggi
               DateTime? dihitungPada;
               for (final e in ranking) {
-                if (dihitungPada == null || e.dihitungPada.isAfter(dihitungPada)) {
+                if (dihitungPada == null ||
+                    e.dihitungPada.isAfter(dihitungPada)) {
                   dihitungPada = e.dihitungPada;
                 }
                 final u = unitById[e.unitId];
@@ -173,29 +172,50 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                       ),
                     ),
                     SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                        child: SegmentFilter<_FilterMode>(
-                          current: _filter,
-                          items: [
-                            SegmentItem(_FilterMode.semua, 'Semua', count: totalUnit),
-                            SegmentItem(_FilterMode.siap, 'Siap', count: siapCount),
-                            SegmentItem(_FilterMode.ditahan, 'Ditahan', count: ditahanCount),
-                            SegmentItem(
-                              _FilterMode.dikerjakan,
-                              'Dikerjakan',
-                              count: dikerjakanCount,
-                            ),
-                          ],
-                          onChanged: (f) => setState(() => _filter = f),
+                      child: AppContent(
+                        maxWidth: 900,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                          child: SegmentFilter<_FilterMode>(
+                            current: _filter,
+                            items: [
+                              SegmentItem(
+                                _FilterMode.semua,
+                                'Semua',
+                                count: totalUnit,
+                              ),
+                              SegmentItem(
+                                _FilterMode.siap,
+                                'Siap',
+                                count: siapCount,
+                              ),
+                              SegmentItem(
+                                _FilterMode.ditahan,
+                                'Ditahan',
+                                count: ditahanCount,
+                              ),
+                              SegmentItem(
+                                _FilterMode.dikerjakan,
+                                'Dikerjakan',
+                                count: dikerjakanCount,
+                              ),
+                            ],
+                            onChanged: (f) => setState(() => _filter = f),
+                          ),
                         ),
                       ),
                     ),
                     if (filtered.isNotEmpty)
                       SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(22, 12, 20, 10),
-                          child: Text('Urutan prioritas', style: AppText.label),
+                        child: AppContent(
+                          maxWidth: 900,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(22, 12, 20, 10),
+                            child: Text(
+                              'Urutan prioritas',
+                              style: AppText.label,
+                            ),
+                          ),
                         ),
                       ),
                     if (filtered.isEmpty)
@@ -211,23 +231,27 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                         sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final entry = filtered[index];
-                              final unit = unitById[entry.unitId];
-                              if (unit == null) return const SizedBox.shrink();
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final entry = filtered[index];
+                            final unit = unitById[entry.unitId];
+                            if (unit == null) return const SizedBox.shrink();
 
-                              final siap = isSiapDikerjakan(
-                                statusSparepart: unit.statusSparepart,
-                                statusSpkAsuransi: unit.statusSpkAsuransi,
-                              );
-                              final isHero = unit.id == heroUnitId;
+                            final siap = isSiapDikerjakan(
+                              statusSparepart: unit.statusSparepart,
+                              statusSpkAsuransi: unit.statusSpkAsuransi,
+                            );
+                            final isHero = unit.id == heroUnitId;
 
-                              // Key memuat filter: daftar muncul ulang
-                              // bertahap setiap filter diganti.
-                              return StaggeredFadeIn(
-                                key: ValueKey('${_filter.name}-${unit.id}'),
-                                index: index,
+                            // Key memuat filter: daftar muncul ulang
+                            // bertahap setiap filter diganti.
+                            return StaggeredFadeIn(
+                              key: ValueKey('${_filter.name}-${unit.id}'),
+                              index: index,
+                              child: AppContent(
+                                maxWidth: 900,
                                 child: Padding(
                                   padding: const EdgeInsets.only(bottom: 14),
                                   child: PriorityCard(
@@ -238,18 +262,18 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                                     isHero: isHero,
                                     color: AppColors.scoreColor(entry.nilaiUi),
                                     isProcessing: _processingUnitId == unit.id,
-                                    onTap: () => _openDetail(unit, entry, totalUnit),
+                                    onTap: () =>
+                                        _openDetail(unit, entry, totalUnit),
                                     onTerbitkanInstruksi:
                                         unit.statusPengerjaan == 'menunggu'
-                                            ? () => _terbitkanInstruksi(unit)
-                                            : null,
+                                        ? () => _terbitkanInstruksi(unit)
+                                        : null,
                                     statusPengerjaan: unit.statusPengerjaan,
                                   ),
                                 ),
-                              );
-                            },
-                            childCount: filtered.length,
-                          ),
+                              ),
+                            );
+                          }, childCount: filtered.length),
                         ),
                       ),
                   ],

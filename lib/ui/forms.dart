@@ -34,6 +34,7 @@ class AppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final tappable = onPressed != null && !isLoading;
     final active = onPressed != null || isLoading;
+    final useGradient = tappable && variant == AppButtonVariant.primary;
 
     final Color bg;
     final Color fg;
@@ -85,9 +86,17 @@ class AppButton extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: expand ? 16 : 18),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: bg,
+          color: useGradient ? null : bg,
+          gradient: useGradient
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.brand, AppColors.brandDeep],
+                )
+              : null,
           borderRadius: BorderRadius.circular(height >= 48 ? 16 : 14),
           border: border == null ? null : Border.all(color: border),
+          boxShadow: useGradient ? AppShadows.floating : null,
         ),
         child: AnimatedSize(
           duration: AppMotion.fast,
@@ -149,16 +158,19 @@ class WideActionButton extends StatelessWidget {
     required this.label,
     required this.isProcessing,
     required this.onPressed,
+    this.icon,
   });
 
   final String label;
   final bool isProcessing;
   final VoidCallback? onPressed;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     return AppButton(
       label: label,
+      icon: icon,
       height: 54,
       isLoading: isProcessing,
       onPressed: onPressed,
@@ -202,7 +214,11 @@ class AppFab extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
               decoration: BoxDecoration(
-                color: AppColors.brand,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.brand, AppColors.brandDeep],
+                ),
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: AppShadows.floating,
               ),
@@ -250,8 +266,9 @@ class SegmentFilter<T> extends StatelessWidget {
       builder: (context, constraints) {
         final n = items.length;
         final idx = items.indexWhere((e) => e.value == current);
-        // 4 padding + 1 garis di tiap sisi.
-        final cell = (constraints.maxWidth - 10) / n;
+        if (n == 0) return const SizedBox.shrink();
+        // Isi Stack menyisakan padding 4 px di tiap sisi.
+        final cell = (constraints.maxWidth - 8) / n;
 
         return Container(
           height: 48,
@@ -329,7 +346,11 @@ class WipSearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: appCardDecoration(radius: 18, shadow: AppShadows.soft),
+      decoration: appCardDecoration(
+        radius: 18,
+        shadow: AppShadows.soft,
+        border: AppColors.line.withValues(alpha: 0.85),
+      ),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
@@ -347,7 +368,8 @@ class WipSearchBar extends StatelessWidget {
             builder: (context, value, child) {
               return AnimatedSwitcher(
                 duration: AppMotion.fast,
-                transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
+                transitionBuilder: (c, a) =>
+                    ScaleTransition(scale: a, child: c),
                 child: value.text.isEmpty
                     ? const SizedBox.shrink(key: ValueKey('empty'))
                     : IconButton(

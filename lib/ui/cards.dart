@@ -25,8 +25,35 @@ class InfoPair extends StatelessWidget {
       children: [
         Text(label, style: AppText.caption),
         const SizedBox(height: 2),
-        Text(value, style: AppText.subheading),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.subheading,
+        ),
       ],
+    );
+  }
+}
+
+class _VehicleBadge extends StatelessWidget {
+  const _VehicleBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42,
+      height: 42,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.sageSoft,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const Icon(
+        Icons.directions_car_filled_rounded,
+        size: 21,
+        color: AppColors.brandDeep,
+      ),
     );
   }
 }
@@ -80,7 +107,7 @@ class PriorityCard extends StatelessWidget {
           color: isHero ? AppColors.sageSoft : AppColors.card,
           border: isHero ? AppColors.brand : AppColors.line,
           borderWidth: isHero ? 1.4 : 1,
-          shadow: isHero ? AppShadows.soft : null,
+          shadow: AppShadows.soft,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,7 +202,8 @@ class PriorityCard extends StatelessWidget {
                 ),
                 if (!dikerjakan)
                   AppButton(
-                    label: 'Terbitkan instruksi',
+                    label: 'Terbitkan',
+                    icon: Icons.arrow_forward_rounded,
                     height: 42,
                     expand: false,
                     isLoading: isProcessing,
@@ -237,7 +265,7 @@ class SaUnitCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: appCardDecoration(),
+      decoration: appCardDecoration(shadow: AppShadows.soft),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -245,15 +273,30 @@ class SaUnitCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      unit.tipeKendaraan,
-                      style: AppText.heading.copyWith(fontSize: 17),
+                    const _VehicleBadge(),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            unit.tipeKendaraan,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.heading.copyWith(fontSize: 17),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            unit.noWO,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.mono,
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(unit.noWO, style: AppText.mono),
                   ],
                 ),
               ),
@@ -275,9 +318,14 @@ class SaUnitCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: InfoPair(label: 'Masuk', value: tanggal)),
               Expanded(
-                child: InfoPair(label: 'Aging', value: '${unit.agingHari} hari'),
+                child: InfoPair(label: 'Masuk', value: tanggal),
+              ),
+              Expanded(
+                child: InfoPair(
+                  label: 'Aging',
+                  value: '${unit.agingHari} hari',
+                ),
               ),
             ],
           ),
@@ -285,7 +333,10 @@ class SaUnitCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: InfoPair(label: 'Panel', value: '${unit.jumlahPanel} panel'),
+                child: InfoPair(
+                  label: 'Panel',
+                  value: '${unit.jumlahPanel} panel',
+                ),
               ),
               Expanded(
                 child: InfoPair(
@@ -360,13 +411,36 @@ class PartmanUnitCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: appCardDecoration(),
+      decoration: appCardDecoration(shadow: AppShadows.soft),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(unit.tipeKendaraan, style: AppText.heading.copyWith(fontSize: 17)),
-          const SizedBox(height: 2),
-          Text(unit.noWO, style: AppText.mono),
+          Row(
+            children: [
+              const _VehicleBadge(),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      unit.tipeKendaraan,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.heading.copyWith(fontSize: 17),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      unit.noWO,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.mono,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 14),
           Container(height: 1, color: AppColors.lineSoft),
           const SizedBox(height: 12),
