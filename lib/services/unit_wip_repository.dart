@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../logic/smart_calculator.dart';
 import '../models/unit_wip.dart';
+import 'user_role_service.dart';
 
 class RankingEntry {
   final String unitId;
@@ -27,7 +29,9 @@ class RankingEntry {
     required this.dihitungPada,
   });
 
-  factory RankingEntry.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory RankingEntry.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data();
     if (data == null) {
       throw StateError('Dokumen hasilRanking ${doc.id} kosong/tidak ada data.');
@@ -49,7 +53,7 @@ class RankingEntry {
 
 class UnitWipRepository {
   UnitWipRepository({FirebaseFirestore? firestore})
-      : _db = firestore ?? FirebaseFirestore.instance;
+    : _db = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _db;
 
@@ -63,16 +67,21 @@ class UnitWipRepository {
     return _unitWipCol
         .orderBy('tanggalMasuk', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => UnitWip.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((doc) => UnitWip.fromFirestore(doc)).toList(),
+        );
   }
 
   Stream<List<RankingEntry>> watchHasilRanking() {
     return _hasilRankingCol
         .orderBy('peringkat')
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => RankingEntry.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => RankingEntry.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   Map<String, dynamic> _withServerUpdatedAt(Map<String, dynamic> data) {
@@ -86,8 +95,35 @@ class UnitWipRepository {
     await recomputeAndSaveRanking();
   }
 
-  Future<void> updateUnitFields(String unitId, Map<String, dynamic> fields) async {
-    await _unitWipCol.doc(unitId).update(_withServerUpdatedAt(fields));
+  Future<void> updateUnitFields(
+    String unitId,
+    Map<String, dynamic> fields,
+  ) async {
+    final updates = Map<String, dynamic>.from(fields);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null &&
+        (updates.containsKey('statusSparepart') ||
+            updates.containsKey('statusSpkAsuransi'))) {
+      String? username;
+      try {
+        username = (await UserRoleService(firestore: _db).getProfile(user.uid))
+            ?.nama;
+      } catch (_) {
+        // Keep the status update working if the profile lookup is unavailable.
+      }
+      if (username == null || username.isEmpty || username == '(tanpa nama)') {
+        username = user.email ?? user.uid;
+      }
+
+      if (updates.containsKey('statusSparepart')) {
+        updates['statusSparepartUpdatedBy'] = username;
+      }
+      if (updates.containsKey('statusSpkAsuransi')) {
+        updates['statusSpkAsuransiUpdatedBy'] = username;
+      }
+    }
+
+    await _unitWipCol.doc(unitId).update(_withServerUpdatedAt(updates));
     await recomputeAndSaveRanking();
   }
 
@@ -95,7 +131,10 @@ class UnitWipRepository {
   /// [exceptUnitId] diisi saat mode edit, supaya unit yang sedang diedit
   /// tidak dianggap bentrok dengan dirinya sendiri.
   Future<bool> isNoWOTaken(String noWO, {String? exceptUnitId}) async {
-    final snap = await _unitWipCol.where('noWO', isEqualTo: noWO).limit(2).get();
+    final snap = await _unitWipCol
+        .where('noWO', isEqualTo: noWO)
+        .limit(2)
+        .get();
     return snap.docs.any((d) => d.id != exceptUnitId);
   }
 
@@ -107,7 +146,6 @@ class UnitWipRepository {
     await _unitWipCol.doc(unitId).delete();
     await recomputeAndSaveRanking();
   }
-
 
   Future<void> recomputeAndSaveRanking() async {
     final unitSnapshot = await _unitWipCol

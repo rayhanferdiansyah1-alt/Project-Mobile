@@ -6,8 +6,11 @@ class UnitWip {
   final String tipeKendaraan;
   final DateTime tanggalMasuk;
   final int jumlahPanel; // C1 (Cost)
-  final String statusSparepart; // 'ready' | 'order_eo' | 'back_order' -> C2 (Benefit)
+  final String
+  statusSparepart; // 'ready' | 'order_eo' | 'back_order' -> C2 (Benefit)
   final String statusSpkAsuransi; // 'disetujui' | 'proses_klaim' | 'bermasalah' -> C3 (Benefit)
+  final String? statusSparepartUpdatedBy;
+  final String? statusSpkAsuransiUpdatedBy;
   final double estimasiBiaya; // C5 (Cost)
   final String statusPengerjaan; // 'menunggu' | 'sedang_dikerjakan' | 'selesai'
   final String createdBy;
@@ -21,6 +24,8 @@ class UnitWip {
     required this.jumlahPanel,
     required this.statusSparepart,
     required this.statusSpkAsuransi,
+    this.statusSparepartUpdatedBy,
+    this.statusSpkAsuransiUpdatedBy,
     required this.estimasiBiaya,
     required this.statusPengerjaan,
     required this.createdBy,
@@ -79,6 +84,8 @@ class UnitWip {
       jumlahPanel: (data['jumlahPanel'] as num).toInt(),
       statusSparepart: data['statusSparepart'] as String,
       statusSpkAsuransi: data['statusSpkAsuransi'] as String,
+      statusSparepartUpdatedBy: data['statusSparepartUpdatedBy'] as String?,
+      statusSpkAsuransiUpdatedBy: data['statusSpkAsuransiUpdatedBy'] as String?,
       estimasiBiaya: (data['estimasiBiaya'] as num).toDouble(),
       statusPengerjaan: data['statusPengerjaan'] as String,
       createdBy: data['createdBy'] as String,
@@ -88,7 +95,7 @@ class UnitWip {
 
   /// Konversi balik ke Map, dipakai saat create/update ke Firestore.
   Map<String, dynamic> toFirestore() {
-    return {
+    final data = <String, dynamic>{
       'noWO': noWO,
       'tipeKendaraan': tipeKendaraan,
       'tanggalMasuk': Timestamp.fromDate(tanggalMasuk),
@@ -100,5 +107,12 @@ class UnitWip {
       'createdBy': createdBy,
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
+    if (statusSparepartUpdatedBy != null) {
+      data['statusSparepartUpdatedBy'] = statusSparepartUpdatedBy;
+    }
+    if (statusSpkAsuransiUpdatedBy != null) {
+      data['statusSpkAsuransiUpdatedBy'] = statusSpkAsuransiUpdatedBy;
+    }
+    return data;
   }
 }
