@@ -3,13 +3,8 @@ import 'package:flutter/material.dart';
 import '../../logic/smart_calculator.dart';
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
+import '../../ui/ui.dart';
 import '../../utils/wip_format.dart';
-import '../../ui/components/criteria_tile.dart';
-import '../../ui/components/headers/detail_header.dart';
-import '../../ui/components/score_summary.dart';
-import '../../ui/components/total_score_card.dart';
-import '../../ui/components/wide_action_button.dart';
-import '../../ui/theme/app_colors.dart';
 
 class KbUnitDetailScreen extends StatefulWidget {
   const KbUnitDetailScreen({
@@ -36,15 +31,16 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
     try {
       await _repo.updateUnitFields(widget.unit.id, {'statusPengerjaan': 'sedang_dikerjakan'});
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Instruksi diterbitkan untuk ${widget.unit.noWO}')),
-        );
+        showAppSnackbar(context, 'Instruksi diterbitkan untuk ${widget.unit.noWO}');
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal menerbitkan instruksi: $e')));
+        showAppSnackbar(
+          context,
+          'Gagal menerbitkan instruksi: $e',
+          kind: SnackKind.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -118,15 +114,12 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
                         jumlahPanel: unit.jumlahPanel,
                         agingHari: unit.agingHari,
                       ),
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4),
+                      style: AppText.bodyMuted.copyWith(color: AppColors.ink),
                     ),
                   ),
 
                   const SizedBox(height: 8),
-                  const Text(
-                    'Rincian Kriteria',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink),
-                  ),
+                  Text('Rincian kriteria', style: AppText.heading.copyWith(fontSize: 18)),
                   const SizedBox(height: 12),
 
                   ...criteria.asMap().entries.map(
@@ -137,14 +130,17 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
                   TotalScoreCard(nilaiUi: entry.nilaiUi),
 
                   const SizedBox(height: 24),
-                  WideActionButton(
+                  FadeSlideIn(
+                    delay: const Duration(milliseconds: 600),
+                    child: WideActionButton(
                     isProcessing: _isProcessing,
                     onPressed: (siap && unit.statusPengerjaan == 'menunggu' && !_isProcessing)
                         ? _terbitkanInstruksi
                         : null,
                     label: unit.statusPengerjaan == 'menunggu'
                         ? 'Terbitkan Instruksi Penugasan Teknisi'
-                        : 'Status: ${unit.statusPengerjaan}',
+                        : 'Status: ${labelPengerjaan(unit.statusPengerjaan)}',
+                  ),
                   ),
                 ],
               ),

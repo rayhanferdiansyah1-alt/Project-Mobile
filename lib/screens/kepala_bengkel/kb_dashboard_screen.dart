@@ -2,12 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
+import '../../ui/ui.dart';
 import '../../utils/wip_format.dart';
-import '../../ui/components/cards/priority_card.dart';
-import '../../ui/components/headers/kb_header.dart';
-import '../../ui/components/pill_tabs.dart';
-import '../../ui/components/staggered_fade_in.dart';
-import '../../ui/theme/app_colors.dart';
 import 'kb_unit_detail_screen.dart';
 
 enum _FilterMode { semua, siap, ditahan, dikerjakan }
@@ -31,18 +27,16 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
   late final Stream<List<RankingEntry>> _rankingStream = _repo.watchHasilRanking();
 
   Future<void> _manualRecompute() async {
+    if (_isRecomputing) return;
     setState(() => _isRecomputing = true);
     try {
       await _repo.recomputeAndSaveRanking();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ranking berhasil dihitung ulang.')),
-        );
+        showAppSnackbar(context, 'Ranking berhasil dihitung ulang.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal recompute: $e')));
+        showAppSnackbar(context, 'Gagal recompute: $e', kind: SnackKind.error);
       }
     } finally {
       if (mounted) setState(() => _isRecomputing = false);
@@ -54,14 +48,15 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
     try {
       await _repo.terbitkanInstruksi(unit.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Instruksi diterbitkan untuk ${unit.noWO}')),
-        );
+        showAppSnackbar(context, 'Instruksi diterbitkan untuk ${unit.noWO}');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal menerbitkan instruksi: $e')));
+        showAppSnackbar(
+          context,
+          'Gagal menerbitkan instruksi: $e',
+          kind: SnackKind.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _processingUnitId = null);
@@ -69,26 +64,15 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
   }
 
   void _openDetail(UnitWip unit, RankingEntry entry, int totalUnit) {
+    // Transisi halaman diatur oleh AppTheme (fade + naik tipis).
     Navigator.push(
       context,
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 350),
-        pageBuilder: (context, animation, secondaryAnimation) => KbUnitDetailScreen(
+      MaterialPageRoute<void>(
+        builder: (_) => KbUnitDetailScreen(
           unit: unit,
           entry: entry,
           totalUnit: totalUnit,
         ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final fade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
-          final slide = Tween<Offset>(
-            begin: const Offset(0, 0.05),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
-          return FadeTransition(
-            opacity: fade,
-            child: SlideTransition(position: slide, child: child),
-          );
-        },
       ),
     );
   }
@@ -101,22 +85,26 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
         stream: _unitStream,
         builder: (context, unitSnapshot) {
           if (unitSnapshot.hasError) {
-            return Center(child: Text('Terjadi kesalahan: ${unitSnapshot.error}'));
+            return EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Terjadi kesalahan',
+              message: '${unitSnapshot.error}',
+            );
           }
-          if (!unitSnapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          if (!unitSnapshot.hasData) return const PageSkeleton();
           final unitById = {for (final u in unitSnapshot.data!) u.id: u};
 
           return StreamBuilder<List<RankingEntry>>(
             stream: _rankingStream,
             builder: (context, rankingSnapshot) {
               if (rankingSnapshot.hasError) {
-                return Center(child: Text('Terjadi kesalahan: ${rankingSnapshot.error}'));
+                return EmptyState(
+                  icon: Icons.error_outline_rounded,
+                  title: 'Terjadi kesalahan',
+                  message: '${rankingSnapshot.error}',
+                );
               }
-              if (!rankingSnapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
+              if (!rankingSnapshot.hasData) return const PageSkeleton();
 
               final ranking = rankingSnapshot.data!;
               final totalUnit = ranking.length;
@@ -131,6 +119,7 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
 
               var siapCount = 0;
               var ditahanCount = 0;
+              var dikerjakanCount = 0;
               String? heroUnitId; // unit 'menunggu' dengan peringkat tertinggi
               DateTime? dihitungPada;
               for (final e in ranking) {
@@ -138,7 +127,11 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                   dihitungPada = e.dihitungPada;
                 }
                 final u = unitById[e.unitId];
-                if (u == null || !isMenunggu(u)) continue;
+                if (u == null) continue;
+                if (!isMenunggu(u)) {
+                  dikerjakanCount++;
+                  continue;
+                }
                 heroUnitId ??= u.id; // ranking sudah terurut per peringkat
                 if (isSiap(u)) {
                   siapCount++;
@@ -162,96 +155,105 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                 }
               }).toList();
 
-              return CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: KbHeader(
-                      totalUnit: totalUnit,
-                      siapCount: siapCount,
-                      ditahanCount: ditahanCount,
-                      dihitungPada: dihitungPada,
-                      isRecomputing: _isRecomputing,
-                      onRefresh: _manualRecompute,
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                      child: PillTabs<_FilterMode>(
-                        current: _filter,
-                        fitLabels: true,
-                        items: const [
-                          PillTabItem(_FilterMode.semua, 'Semua'),
-                          PillTabItem(_FilterMode.siap, 'Siap'),
-                          PillTabItem(_FilterMode.ditahan, 'Ditahan'),
-                          PillTabItem(_FilterMode.dikerjakan, 'Dikerjakan'),
-                        ],
-                        onChanged: (f) => setState(() => _filter = f),
+              return RefreshIndicator(
+                color: AppColors.brand,
+                backgroundColor: AppColors.card,
+                onRefresh: _manualRecompute,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: KbHeader(
+                        totalUnit: totalUnit,
+                        siapCount: siapCount,
+                        ditahanCount: ditahanCount,
+                        dihitungPada: dihitungPada,
+                        isRecomputing: _isRecomputing,
+                        onRefresh: _manualRecompute,
                       ),
                     ),
-                  ),
-                  if (totalUnit > 0)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                        child: Text(
-                          'PRIORITAS UTAMA',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey.shade600,
-                            letterSpacing: 0.6,
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                        child: SegmentFilter<_FilterMode>(
+                          current: _filter,
+                          items: [
+                            SegmentItem(_FilterMode.semua, 'Semua', count: totalUnit),
+                            SegmentItem(_FilterMode.siap, 'Siap', count: siapCount),
+                            SegmentItem(_FilterMode.ditahan, 'Ditahan', count: ditahanCount),
+                            SegmentItem(
+                              _FilterMode.dikerjakan,
+                              'Dikerjakan',
+                              count: dikerjakanCount,
+                            ),
+                          ],
+                          onChanged: (f) => setState(() => _filter = f),
+                        ),
+                      ),
+                    ),
+                    if (filtered.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(22, 12, 20, 10),
+                          child: Text('Urutan prioritas', style: AppText.label),
+                        ),
+                      ),
+                    if (filtered.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyState(
+                          icon: Icons.inbox_outlined,
+                          title: 'Tidak ada unit',
+                          message: 'Belum ada unit pada kategori ini.',
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final entry = filtered[index];
+                              final unit = unitById[entry.unitId];
+                              if (unit == null) return const SizedBox.shrink();
+
+                              final siap = isSiapDikerjakan(
+                                statusSparepart: unit.statusSparepart,
+                                statusSpkAsuransi: unit.statusSpkAsuransi,
+                              );
+                              final isHero = unit.id == heroUnitId;
+
+                              // Key memuat filter: daftar muncul ulang
+                              // bertahap setiap filter diganti.
+                              return StaggeredFadeIn(
+                                key: ValueKey('${_filter.name}-${unit.id}'),
+                                index: index,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 14),
+                                  child: PriorityCard(
+                                    entry: entry,
+                                    unit: unit,
+                                    totalUnit: totalUnit,
+                                    siap: siap,
+                                    isHero: isHero,
+                                    color: AppColors.scoreColor(entry.nilaiUi),
+                                    isProcessing: _processingUnitId == unit.id,
+                                    onTap: () => _openDetail(unit, entry, totalUnit),
+                                    onTerbitkanInstruksi:
+                                        unit.statusPengerjaan == 'menunggu'
+                                            ? () => _terbitkanInstruksi(unit)
+                                            : null,
+                                    statusPengerjaan: unit.statusPengerjaan,
+                                  ),
+                                ),
+                              );
+                            },
+                            childCount: filtered.length,
                           ),
                         ),
                       ),
-                    ),
-                  if (filtered.isEmpty)
-                    const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Center(child: Text('Tidak ada unit pada kategori ini.')),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final entry = filtered[index];
-                            final unit = unitById[entry.unitId];
-                            if (unit == null) return const SizedBox.shrink();
-
-                            final siap = isSiapDikerjakan(
-                              statusSparepart: unit.statusSparepart,
-                              statusSpkAsuransi: unit.statusSpkAsuransi,
-                            );
-                            final isHero = unit.id == heroUnitId;
-
-                            return StaggeredFadeIn(
-                              index: index,
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 14),
-                                child: PriorityCard(
-                                  entry: entry,
-                                  unit: unit,
-                                  totalUnit: totalUnit,
-                                  siap: siap,
-                                  isHero: isHero,
-                                  color: AppColors.scoreColor(entry.nilaiUi),
-                                  isProcessing: _processingUnitId == unit.id,
-                                  onTap: () => _openDetail(unit, entry, totalUnit),
-                                  onTerbitkanInstruksi: unit.statusPengerjaan == 'menunggu'
-                                      ? () => _terbitkanInstruksi(unit)
-                                      : null,
-                                  statusPengerjaan: unit.statusPengerjaan,
-                                ),
-                              ),
-                            );
-                          },
-                          childCount: filtered.length,
-                        ),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               );
             },
           );

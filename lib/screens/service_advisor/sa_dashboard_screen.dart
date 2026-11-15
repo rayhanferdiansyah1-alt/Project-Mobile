@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
-import '../../ui/components/cards/sa_unit_card.dart';
-import '../../ui/components/delete_confirm_dialog.dart';
-import '../../ui/components/headers/sa_header.dart';
-import '../../ui/components/staggered_fade_in.dart';
-import '../../ui/components/wip_search_bar.dart';
-import '../../ui/theme/app_colors.dart';
+import '../../ui/ui.dart';
 import 'sa_unit_form_screen.dart';
 
 class SaDashboardScreen extends StatefulWidget {
@@ -22,10 +18,25 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
+  // Tombol "Tambah unit" menyembunyikan diri saat daftar di-scroll ke bawah.
+  bool _fabVisible = true;
+
+  // Stream dibuat sekali supaya tidak berlangganan ulang saat mengetik.
+  late final Stream<List<UnitWip>> _unitStream = _repo.watchUnitWip();
+
   @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  bool _onScroll(UserScrollNotification n) {
+    if (n.direction == ScrollDirection.reverse && _fabVisible) {
+      setState(() => _fabVisible = false);
+    } else if (n.direction == ScrollDirection.forward && !_fabVisible) {
+      setState(() => _fabVisible = true);
+    }
+    return false;
   }
 
   Future<void> _openForm(BuildContext context, {UnitWip? existingUnit}) async {
@@ -38,71 +49,66 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
       ),
     );
     if (context.mounted && saved == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(existingUnit == null
-              ? 'Unit baru berhasil disimpan, ranking dihitung ulang.'
-              : 'Perubahan unit berhasil disimpan, ranking dihitung ulang.'),
-        ),
+      showAppSnackbar(
+        context,
+        existingUnit == null
+            ? 'Unit baru berhasil disimpan, ranking dihitung ulang.'
+            : 'Perubahan unit berhasil disimpan, ranking dihitung ulang.',
       );
     }
   }
 
   void _confirmDelete(BuildContext context, UnitWip unit) {
-    showDialog(
-      context: context,
-      builder: (ctx) => DeleteConfirmDialog(
-        unit: unit,
-        onConfirm: () async {
-          Navigator.pop(ctx);
-          try {
-            await _repo.deleteUnit(unit.id);
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Unit ${unit.noWO} dihapus, ranking dihitung ulang.'),
-                ),
-              );
-            }
-          } catch (e) {
-            if (context.mounted) {
-              final ditolak = e.toString().contains('permission-denied');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(ditolak
-                      ? 'Hanya unit yang Anda buat sendiri yang dapat dihapus.'
-                      : 'Gagal menghapus unit: $e'),
-                ),
-              );
-            }
+    showDeleteConfirmDialog(
+      context,
+      unit: unit,
+      onConfirm: () async {
+        Navigator.pop(context);
+        try {
+          await _repo.deleteUnit(unit.id);
+          if (context.mounted) {
+            showAppSnackbar(
+              context,
+              'Unit ${unit.noWO} dihapus, ranking dihitung ulang.',
+            );
           }
-        },
-      ),
+        } catch (e) {
+          if (context.mounted) {
+            final ditolak = e.toString().contains('permission-denied');
+            showAppSnackbar(
+              context,
+              ditolak
+                  ? 'Hanya unit yang Anda buat sendiri yang dapat dihapus.'
+                  : 'Gagal menghapus unit: $e',
+              kind: SnackKind.error,
+            );
+          }
+        }
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.secondary;
-
     return Scaffold(
-      backgroundColor: AppColors.canvasBlue,
-      floatingActionButton: FloatingActionButton.extended(
+      backgroundColor: AppColors.canvas,
+      floatingActionButton: AppFab(
+        icon: Icons.add_rounded,
+        label: 'Tambah unit',
+        visible: _fabVisible,
         onPressed: () => _openForm(context),
-        backgroundColor: accent,
-        foregroundColor: Colors.black87,
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Unit', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: StreamBuilder<List<UnitWip>>(
-        stream: _repo.watchUnitWip(),
+        stream: _unitStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('Terjadi kesalahan: ${snapshot.error}'));
+            return EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Terjadi kesalahan',
+              message: '${snapshot.error}',
+            );
           }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          if (!snapshot.hasData) return const PageSkeleton();
 
           final all = snapshot.data!;
           final q = _query.trim().toLowerCase();
@@ -114,55 +120,67 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
                       u.tipeKendaraan.toLowerCase().contains(q))
                   .toList();
 
-          return CustomScrollView(
-            slivers: [
-              const SliverToBoxAdapter(child: SaHeader()),
-              SliverToBoxAdapter(
-                child: Transform.translate(
-                  offset: const Offset(0, -24),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: WipSearchBar(
-                      controller: _searchCtrl,
-                      onChanged: (v) => setState(() => _query = v),
+          return NotificationListener<UserScrollNotification>(
+            onNotification: _onScroll,
+            child: CustomScrollView(
+              slivers: [
+                const SliverToBoxAdapter(child: SaHeader()),
+                SliverToBoxAdapter(
+                  child: Transform.translate(
+                    offset: const Offset(0, -24),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: WipSearchBar(
+                        controller: _searchCtrl,
+                        onChanged: (v) => setState(() => _query = v),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (all.isEmpty)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(child: Text('Belum ada unit WIP. Tekan + Tambah Unit untuk menambah.')),
-                )
-              else if (filtered.isEmpty)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(child: Text('Tidak ditemukan unit yang cocok.')),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final unit = filtered[index];
-                        return StaggeredFadeIn(
-                          index: index,
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: SaUnitCard(
-                              unit: unit,
-                              onEdit: () => _openForm(context, existingUnit: unit),
-                              onDelete: () => _confirmDelete(context, unit),
+                if (all.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: EmptyState(
+                      icon: Icons.directions_car_outlined,
+                      title: 'Belum ada unit WIP',
+                      message: 'Tekan "Tambah unit" untuk memasukkan unit pertama.',
+                    ),
+                  )
+                else if (filtered.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: EmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: 'Unit tidak ditemukan',
+                      message: 'Coba kata kunci No. WO atau tipe kendaraan lain.',
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final unit = filtered[index];
+                          return StaggeredFadeIn(
+                            key: ValueKey(unit.id),
+                            index: index,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: SaUnitCard(
+                                unit: unit,
+                                onEdit: () => _openForm(context, existingUnit: unit),
+                                onDelete: () => _confirmDelete(context, unit),
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                      childCount: filtered.length,
+                          );
+                        },
+                        childCount: filtered.length,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           );
         },
       ),

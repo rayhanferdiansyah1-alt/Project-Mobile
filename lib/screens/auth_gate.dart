@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/user_role_service.dart';
+import '../ui/ui.dart';
 import 'login_screen.dart';
 import 'kepala_bengkel/kb_dashboard_screen.dart';
 import 'partman/partman_dashboard_screen.dart';
@@ -16,9 +17,7 @@ class AuthGate extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, authSnapshot) {
         if (authSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const Scaffold(body: PageSkeleton());
         }
 
         final user = authSnapshot.data;
@@ -30,9 +29,7 @@ class AuthGate extends StatelessWidget {
           future: UserRoleService().getRole(user.uid),
           builder: (context, roleSnapshot) {
             if (roleSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
+              return const Scaffold(body: PageSkeleton());
             }
 
             switch (roleSnapshot.data) {
@@ -44,25 +41,24 @@ class AuthGate extends StatelessWidget {
                 return const KbDashboardScreen();
               default:
                 return Scaffold(
-                  body: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Akun belum terdaftar dengan peran (role) tertentu.\n'
-                            'Hubungi admin untuk mendaftarkan akun ini.',
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () => FirebaseAuth.instance.signOut(),
-                            child: const Text('Keluar'),
-                          ),
-                        ],
+                  body: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const EmptyState(
+                        icon: Icons.lock_outline_rounded,
+                        title: 'Akun belum memiliki peran',
+                        message: 'Hubungi admin untuk mendaftarkan akun ini '
+                            'dengan peran (role) tertentu.',
                       ),
-                    ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: AppButton(
+                          label: 'Keluar',
+                          variant: AppButtonVariant.outline,
+                          onPressed: () => FirebaseAuth.instance.signOut(),
+                        ),
+                      ),
+                    ],
                   ),
                 );
             }

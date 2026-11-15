@@ -4,10 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
-import '../../ui/components/cancel_save_buttons.dart';
-import '../../ui/components/form_field_box.dart';
-import '../../ui/components/headers/form_header.dart';
-import '../../ui/theme/app_colors.dart';
+import '../../ui/ui.dart';
 
 class SaUnitFormScreen extends StatefulWidget {
   const SaUnitFormScreen({super.key, this.existingUnit});
@@ -80,8 +77,10 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
       );
       if (sudahDipakai) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('No. WO $noWO sudah dipakai unit lain.')),
+          showAppSnackbar(
+            context,
+            'No. WO $noWO sudah dipakai unit lain.',
+            kind: SnackKind.error,
           );
         }
         return; // _isSaving dikembalikan oleh blok finally di bawah
@@ -116,9 +115,7 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
       if (mounted) Navigator.pop(context, true); // true = berhasil disimpan
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan: $e')),
-        );
+        showAppSnackbar(context, 'Gagal menyimpan: $e', kind: SnackKind.error);
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -128,7 +125,7 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.canvasBlue,
+      backgroundColor: AppColors.canvas,
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: FormHeader(isEditMode: _isEditMode)),
@@ -140,26 +137,34 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FieldBox(
-                      label: 'NO. WO / PKB',
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 120),
+                      child: FieldBox(
+                      label: 'No. WO / PKB',
                       child: TextFormField(
                         controller: _noWOCtrl,
                         decoration: plainInputDecoration('Contoh: 150021-BPM-2026-11-000001'),
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
                       ),
+                      ),
                     ),
                     const SizedBox(height: 14),
-                    FieldBox(
-                      label: 'TIPE KENDARAAN',
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 190),
+                      child: FieldBox(
+                      label: 'Tipe kendaraan',
                       child: TextFormField(
                         controller: _tipeCtrl,
                         decoration: plainInputDecoration('Contoh: Mitsubishi Xpander'),
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
                       ),
+                      ),
                     ),
                     const SizedBox(height: 14),
-                    FieldBox(
-                      label: 'TANGGAL MASUK',
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 260),
+                      child: FieldBox(
+                      label: 'Tanggal masuk',
                       child: InkWell(
                         onTap: _pickTanggal,
                         child: Row(
@@ -167,16 +172,19 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                           children: [
                             Text(
                               '${_tanggalMasuk.day}/${_tanggalMasuk.month}/${_tanggalMasuk.year}',
-                              style: const TextStyle(fontSize: 14.5),
+                              style: AppText.body.copyWith(fontSize: 14.5),
                             ),
-                            Icon(Icons.calendar_today, size: 18, color: Colors.grey.shade500),
+                            const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.muted),
                           ],
                         ),
                       ),
+                      ),
                     ),
                     const SizedBox(height: 14),
-                    FieldBox(
-                      label: 'JUMLAH PANEL',
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 330),
+                      child: FieldBox(
+                      label: 'Jumlah panel',
                       child: TextFormField(
                         controller: _panelCtrl,
                         keyboardType: TextInputType.number,
@@ -187,10 +195,13 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                           return null;
                         },
                       ),
+                      ),
                     ),
                     const SizedBox(height: 14),
-                    FieldBox(
-                      label: 'ESTIMASI BIAYA (RP)',
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 400),
+                      child: FieldBox(
+                      label: 'Estimasi biaya (Rp)',
                       child: TextFormField(
                         controller: _biayaCtrl,
                         keyboardType: TextInputType.number,
@@ -201,11 +212,12 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                           return null;
                         },
                       ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       'Status sparepart dan SPK asuransi diisi oleh Partman. Nilai awal unit baru: Back Order dan Proses Klaim.',
-                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade500, height: 1.4),
+                      style: AppText.caption,
                     ),
                     const SizedBox(height: 28),
                     CancelSaveButtons(
@@ -213,7 +225,6 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
                       onCancel: () => Navigator.pop(context),
                       onSave: _submit,
                       saveFlex: 2,
-                      boldSaveLabel: true,
                     ),
                   ],
                 ),

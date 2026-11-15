@@ -2,12 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
-import '../../ui/components/cards/partman_unit_card.dart';
-import '../../ui/components/headers/partman_header.dart';
-import '../../ui/components/pill_tabs.dart';
-import '../../ui/components/staggered_fade_in.dart';
-import '../../ui/components/success_snackbar.dart';
-import '../../ui/theme/app_colors.dart';
+import '../../ui/ui.dart';
 import 'widgets/sparepart_update_sheet.dart';
 import 'widgets/spk_update_sheet.dart';
 
@@ -23,6 +18,9 @@ class PartmanDashboardScreen extends StatefulWidget {
 class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
   final _repo = UnitWipRepository();
   _FilterMode _filter = _FilterMode.perluUpdate;
+
+  // Stream dibuat sekali supaya tidak berlangganan ulang saat filter diganti.
+  late final Stream<List<UnitWip>> _unitStream = _repo.watchUnitWip();
 
   bool _perluUpdate(UnitWip u) {
     return u.statusSparepart != 'ready' || u.statusSpkAsuransi != 'disetujui';
@@ -47,14 +45,16 @@ class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: StreamBuilder<List<UnitWip>>(
-        stream: _repo.watchUnitWip(),
+        stream: _unitStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('Terjadi kesalahan: ${snapshot.error}'));
+            return EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Terjadi kesalahan',
+              message: '${snapshot.error}',
+            );
           }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          if (!snapshot.hasData) return const PageSkeleton();
 
           final allUnits = snapshot.data!;
           final perluUpdateCount = allUnits.where(_perluUpdate).length;
@@ -67,30 +67,49 @@ class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
               const SliverToBoxAdapter(child: PartmanHeader()),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                  child: PillTabs<_FilterMode>(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                  child: SegmentFilter<_FilterMode>(
                     current: _filter,
                     items: [
-                      PillTabItem(_FilterMode.perluUpdate, 'Perlu update $perluUpdateCount'),
-                      PillTabItem(_FilterMode.semua, 'Semua ${allUnits.length}'),
+                      SegmentItem(
+                        _FilterMode.perluUpdate,
+                        'Perlu update',
+                        count: perluUpdateCount,
+                      ),
+                      SegmentItem(
+                        _FilterMode.semua,
+                        'Semua',
+                        count: allUnits.length,
+                      ),
                     ],
                     onChanged: (f) => setState(() => _filter = f),
                   ),
                 ),
               ),
               if (filtered.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(child: Text('Tidak ada unit pada kategori ini.')),
+                  child: EmptyState(
+                    icon: _filter == _FilterMode.perluUpdate
+                        ? Icons.task_alt_rounded
+                        : Icons.inbox_outlined,
+                    title: _filter == _FilterMode.perluUpdate
+                        ? 'Semua status sudah lengkap'
+                        : 'Belum ada unit',
+                    message: _filter == _FilterMode.perluUpdate
+                        ? 'Tidak ada unit yang perlu diperbarui saat ini.'
+                        : 'Unit yang dibuat Service Advisor akan muncul di sini.',
+                  ),
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final unit = filtered[index];
                         return StaggeredFadeIn(
+                          key: ValueKey('${_filter.name}-${unit.id}'),
                           index: index,
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 12),

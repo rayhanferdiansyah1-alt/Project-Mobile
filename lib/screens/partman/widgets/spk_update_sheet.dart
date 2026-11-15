@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../ui/components/status_option.dart';
-import '../../../ui/components/status_update_sheet_view.dart';
+import '../../../ui/ui.dart';
 import '../../../models/unit_wip.dart';
 import '../../../services/unit_wip_repository.dart';
 
@@ -20,6 +19,7 @@ Future<bool?> showSpkUpdateSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    barrierColor: AppColors.ink.withValues(alpha: 0.3),
     builder: (_) => _SpkSheet(unit: unit, repo: repo),
   );
 }
@@ -39,8 +39,10 @@ class _SpkSheetState extends State<_SpkSheet> {
 
   Future<void> _simpan() async {
     if (!_options.any((o) => o.value == _selected)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih salah satu status terlebih dahulu.')),
+      showAppSnackbar(
+        context,
+        'Pilih salah satu status terlebih dahulu.',
+        kind: SnackKind.info,
       );
       return;
     }
@@ -56,8 +58,7 @@ class _SpkSheetState extends State<_SpkSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
+        showAppSnackbar(context, 'Gagal menyimpan: $e', kind: SnackKind.error);
       }
     }
   }

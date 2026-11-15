@@ -21,6 +21,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'SPK WIP Bodi & Cat',
       theme: AppTheme.light(),
+      debugShowCheckedModeBanner: false,
       home: const AuthGate(),
     );
   }

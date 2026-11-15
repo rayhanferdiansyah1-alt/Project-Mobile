@@ -1,18 +1,55 @@
-# Folder `ui/` -- satu pintu untuk semua tampilan
+# UI aplikasi SPK WIP Bodi & Cat
 
-Aturan: layar di `screens/` hanya merangkai komponen dan menjalankan logika.
-Warna, gradien, bayangan, dan widget tampilan didefinisikan di sini.
+Layar cukup satu baris import:
 
-```
-ui/
-├── theme/        app_colors (semua warna kustom), app_effects (gradien & bayangan), app_theme (ThemeData)
-└── components/
-    ├── headers/  curved_header (+RoleBadge, HeaderTitle), partman/sa/kb/form/detail_header
-    ├── cards/    partman_unit_card, sa_unit_card, priority_card
-    ├── auth/     login_hero, login_card, auth_input_decoration, gradient_login_button, ...
-    └── ...       pill_tabs, status_pill, status_option, status_update_sheet_view,
-                  cancel_save_buttons, score_ring, criteria_tile, dll.
+```dart
+import '../../ui/ui.dart'; // sesuaikan jumlah ../ dengan kedalaman folder
 ```
 
-Mau ganti warna brand / status? Edit `theme/app_colors.dart`.
-Mau ubah bentuk header? Edit `headers/curved_header.dart`.
+## Persiapan (sekali saja)
+
+Font memakai Plus Jakarta Sans lewat paket `google_fonts`:
+
+```
+flutter pub add google_fonts
+```
+
+## Struktur
+
+| File | Isi |
+|---|---|
+| `ui.dart` | Pintu masuk tunggal (export semua di bawah) |
+| `theme/app_colors.dart` | Semua warna, `StatusLevel`, `AppColors.status()` |
+| `theme/app_text.dart` | Skala tipografi `AppText` |
+| `theme/app_effects.dart` | `AppRadius`, `AppMotion`, `AppShadows`, `appCardDecoration()` |
+| `theme/app_theme.dart` | `AppTheme.light()` + transisi halaman |
+| `motion.dart` | `Pressable`, `FadeSlideIn`, `StaggeredFadeIn`, `CountUpText`, `Shake`, `PulsingDot` |
+| `headers.dart` | `AppHeader`, `KbHeader`, `SaHeader`, `PartmanHeader`, `FormHeader`, `DetailHeader`, `AppUserMenu` |
+| `cards.dart` | `PriorityCard`, `SaUnitCard`, `PartmanUnitCard`, `InfoPair` |
+| `scoring.dart` | `ScoreRing`, `ScoreSummary`, `TotalScoreCard`, `CriteriaTile` |
+| `forms.dart` | `AppButton`, `CancelSaveButtons`, `WideActionButton`, `AppFab`, `SegmentFilter`, `WipSearchBar`, `FieldBox` |
+| `status.dart` | `StatusChip`, `StatusOption`, `StatusOptionTile`, `StatusUpdateSheetView` |
+| `feedback.dart` | `showAppSnackbar`, `showDeleteConfirmDialog`, `EmptyState`, `SkeletonList`, `PageSkeleton` |
+| `auth.dart` | `LoginHero`, `LoginGreeting`, `FieldLabel`, dekorasi field, `LoginErrorBanner` |
+
+## Palet (60-30-10, terang)
+
+| Peran | Warna |
+|---|---|
+| Latar | oatmeal `#ECEAE1` |
+| Kartu | `#F7F6F0` |
+| Header dan fill lembut | sage `#C8D5C2` / `#DDE6D6` |
+| Aksen | teal laut `#3A7684` |
+| Teks utama / redup | `#1F2A2B` / `#566265` |
+
+Status memakai hijau, kuning, merah kalem dan selalu membawa ikon + teks.
+Jangan menulis `Color(0x...)` atau `Colors.grey` di layar; tambahkan token
+di `app_colors.dart`.
+
+## Aturan
+
+- Satu keluarga font, ukuran teks minimum 11,5.
+- Status selalu lewat `StatusChip`.
+- Elemen yang bisa ditekan dibungkus `Pressable` (atau `AppButton`).
+- Daftar yang muncul bertahap memakai `StaggeredFadeIn`.
+- Pesan ke pengguna lewat `showAppSnackbar` (bukan `SnackBar` polos).

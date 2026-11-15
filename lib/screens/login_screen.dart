@@ -1,12 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../ui/components/auth/auth_input_decoration.dart';
-import '../ui/components/auth/gradient_login_button.dart';
-import '../ui/components/auth/login_card.dart';
-import '../ui/components/auth/login_error_banner.dart';
-import '../ui/components/auth/login_hero.dart';
-import '../ui/theme/app_colors.dart';
+import '../ui/ui.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,8 +10,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -25,27 +19,14 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   String? _errorMessage;
 
-  late final AnimationController _animCtrl;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _slide;
-
-  @override
-  void initState() {
-    super.initState();
-    _animCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _fade = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.06),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
-    _animCtrl.forward();
-  }
+  // Dinaikkan tiap kali login gagal supaya form bergetar.
+  int _shakeTick = 0;
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      setState(() => _shakeTick++);
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -63,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen>
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMessage = _pesanErrorRamah(e.code);
+        _shakeTick++;
       });
     } finally {
       if (mounted) {
@@ -91,86 +73,125 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _animCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final error = _errorMessage;
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: SingleChildScrollView(
-        child: FadeTransition(
-          opacity: _fade,
-          child: SlideTransition(
-            position: _slide,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const LoginHero(),
-                LoginCard(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const LoginGreeting(),
-                        const SizedBox(height: 26),
-
-                        const CapsLabel('EMAIL'),
-                        const SizedBox(height: 7),
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          style: const TextStyle(fontSize: 15),
-                          decoration: emailInputDecoration(context),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Email tidak boleh kosong';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 18),
-
-                        const CapsLabel('KATA SANDI'),
-                        const SizedBox(height: 7),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          style: const TextStyle(fontSize: 15),
-                          decoration: passwordInputDecoration(
-                            context,
-                            obscure: _obscurePassword,
-                            onToggle: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const LoginHero(),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                0,
+                24,
+                32 + MediaQuery.of(context).padding.bottom,
+              ),
+              child: Shake(
+                trigger: _shakeTick,
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FadeSlideIn(
+                        delay: Duration(milliseconds: 360),
+                        child: LoginGreeting(),
+                      ),
+                      const SizedBox(height: 24),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 440),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const FieldLabel('Email'),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              style: AppText.body.copyWith(fontSize: 15),
+                              decoration: emailInputDecoration(),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Email tidak boleh kosong';
+                                }
+                                return null;
+                              },
                             ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Password tidak boleh kosong';
-                            }
-                            return null;
-                          },
+                          ],
                         ),
-
-                        if (_errorMessage != null) ...[
-                          const SizedBox(height: 14),
-                          LoginErrorBanner(_errorMessage!),
-                        ],
-
-                        const SizedBox(height: 26),
-                        GradientLoginButton(
+                      ),
+                      const SizedBox(height: 18),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 520),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const FieldLabel('Kata sandi'),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              style: AppText.body.copyWith(fontSize: 15),
+                              decoration: passwordInputDecoration(
+                                obscure: _obscurePassword,
+                                onToggle: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Password tidak boleh kosong';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      AnimatedSize(
+                        duration: AppMotion.base,
+                        curve: AppMotion.out,
+                        alignment: Alignment.topCenter,
+                        child: error == null
+                            ? const SizedBox(width: double.infinity)
+                            : Padding(
+                                padding: const EdgeInsets.only(top: 14),
+                                child: LoginErrorBanner(error, key: ValueKey(error)),
+                              ),
+                      ),
+                      const SizedBox(height: 26),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 600),
+                        child: AppButton(
+                          label: 'Masuk',
+                          icon: Icons.arrow_forward_rounded,
+                          height: 56,
                           isLoading: _isLoading,
                           onPressed: _isLoading ? null : _login,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 18),
+                      Center(
+                        child: Text(
+                          'Khusus karyawan terdaftar',
+                          style: AppText.caption,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
