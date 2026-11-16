@@ -1,9 +1,20 @@
-// Barrel file satu pintu untuk seluruh token tema dan komponen UI aplikasi.
-// Cukup impor file ini di setiap screen: `import '.../ui/ui.dart';`
+/// Pintu masuk tunggal untuk seluruh UI aplikasi.
+///
+/// Layar cukup menulis satu baris:
+///   import '../../ui/ui.dart';
+/// (sesuaikan jumlah `../` dengan kedalaman folder layar).
+library;
 
-export 'app_headers.dart';
-export 'app_theme.dart';
-export 'auth_widgets.dart';
-export 'shared_widgets.dart';
-export 'unit_cards.dart';
-export 'unit_wip_stream_view.dart';
+export 'theme/app_colors.dart';
+export 'theme/app_effects.dart';
+export 'theme/app_text.dart';
+export 'theme/app_theme.dart';
+export 'motion.dart';
+export 'headers.dart';
+export 'cards.dart';
+export 'scoring.dart';
+export 'forms.dart';
+export 'status.dart';
+export 'feedback.dart';
+export 'auth.dart';
+export 'layout.dart';

@@ -19,6 +19,9 @@ class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
   final _repo = UnitWipRepository();
   _FilterMode _filter = _FilterMode.perluUpdate;
 
+  // Stream dibuat sekali supaya tidak berlangganan ulang saat filter diganti.
+  late final Stream<List<UnitWip>> _unitStream = _repo.watchUnitWip();
+
   bool _perluUpdate(UnitWip u) {
     return u.statusSparepart != 'ready' || u.statusSpkAsuransi != 'disetujui';
   }
@@ -29,28 +32,40 @@ class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
       unit: unit,
       repo: _repo,
     );
-    if (changed == true && mounted) _showSuccessSnackbar();
+    _notifyStatusChanged(changed);
   }
 
   Future<void> _ubahSpk(UnitWip unit) async {
     final changed = await showSpkUpdateSheet(context, unit: unit, repo: _repo);
-    if (changed == true && mounted) _showSuccessSnackbar();
+    _notifyStatusChanged(changed);
   }
 
-  void _showSuccessSnackbar() {
-    showSuccessSnackbar(
-      context,
-      'Status berhasil diperbarui. Ranking dihitung ulang.',
-    );
+  void _notifyStatusChanged(bool? changed) {
+    if (changed == true && mounted) {
+      showAppSnackbar(
+        context,
+        'Status berhasil diperbarui. Ranking dihitung ulang.',
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: UnitWipStreamView(
-        stream: _repo.watchUnitWip(),
-        builder: (context, allUnits) {
+      backgroundColor: AppColors.canvas,
+      body: StreamBuilder<List<UnitWip>>(
+        stream: _unitStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Terjadi kesalahan',
+              message: '${snapshot.error}',
+            );
+          }
+          if (!snapshot.hasData) return const PageSkeleton();
+
+          final allUnits = snapshot.data!;
           final perluUpdateCount = allUnits.where(_perluUpdate).length;
           final filtered = _filter == _FilterMode.perluUpdate
               ? allUnits.where(_perluUpdate).toList()
@@ -60,48 +75,62 @@ class _PartmanDashboardScreenState extends State<PartmanDashboardScreen> {
             slivers: [
               const SliverToBoxAdapter(child: PartmanHeader()),
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                  child: PillTabs<_FilterMode>(
-                    current: _filter,
-                    items: [
-                      PillTabItem(
-                        _FilterMode.perluUpdate,
-                        'Perlu update $perluUpdateCount',
-                      ),
-                      PillTabItem(
-                        _FilterMode.semua,
-                        'Semua ${allUnits.length}',
-                      ),
-                    ],
-                    onChanged: (f) => setState(() => _filter = f),
+                child: AppContent(
+                  maxWidth: 860,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                    child: SegmentFilter<_FilterMode>(
+                      current: _filter,
+                      items: [
+                        SegmentItem(
+                          _FilterMode.perluUpdate,
+                          'Perlu update',
+                          count: perluUpdateCount,
+                        ),
+                        SegmentItem(
+                          _FilterMode.semua,
+                          'Semua',
+                          count: allUnits.length,
+                        ),
+                      ],
+                      onChanged: (f) => setState(() => _filter = f),
+                    ),
                   ),
                 ),
               ),
               if (filtered.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(
-                    child: Text(
-                      'Tidak ada unit pada kategori ini.',
-                      style: TextStyle(color: AppColors.textMuted),
-                    ),
+                  child: EmptyState(
+                    icon: _filter == _FilterMode.perluUpdate
+                        ? Icons.task_alt_rounded
+                        : Icons.inbox_outlined,
+                    title: _filter == _FilterMode.perluUpdate
+                        ? 'Semua status sudah lengkap'
+                        : 'Belum ada unit',
+                    message: _filter == _FilterMode.perluUpdate
+                        ? 'Tidak ada unit yang perlu diperbarui saat ini.'
+                        : 'Unit yang dibuat Service Advisor akan muncul di sini.',
                   ),
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final unit = filtered[index];
                       return StaggeredFadeIn(
+                        key: ValueKey('${_filter.name}-${unit.id}'),
                         index: index,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: PartmanUnitCard(
-                            unit: unit,
-                            onUbahSparepart: () => _ubahSparepart(unit),
-                            onUbahSpk: () => _ubahSpk(unit),
+                        child: AppContent(
+                          maxWidth: 860,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: PartmanUnitCard(
+                              unit: unit,
+                              onUbahSparepart: () => _ubahSparepart(unit),
+                              onUbahSpk: () => _ubahSpk(unit),
+                            ),
                           ),
                         ),
                       );

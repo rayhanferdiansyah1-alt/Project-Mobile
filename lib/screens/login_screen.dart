@@ -10,8 +10,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -22,33 +21,19 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   String? _errorMessage;
 
-  late final AnimationController _animCtrl;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _slide;
-
-  @override
-  void initState() {
-    super.initState();
-    _animCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _fade = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.06),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
-    _emailFocus.addListener(_onFieldFocusChanged);
-    _passwordFocus.addListener(_onFieldFocusChanged);
-    _animCtrl.forward();
-  }
+  // Dinaikkan tiap kali login gagal supaya form bergetar.
+  int _shakeTick = 0;
 
   void _onFieldFocusChanged() {
     if (mounted) setState(() {});
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isLoading) return;
+    if (!_formKey.currentState!.validate()) {
+      setState(() => _shakeTick++);
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -62,9 +47,12 @@ class _LoginScreenState extends State<LoginScreen>
       );
       // AuthGate otomatis mendeteksi perubahan status login dan pindah layar.
     } on FirebaseAuthException catch (e) {
-      setState(() {
-        _errorMessage = _pesanErrorRamah(e.code);
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = _pesanErrorRamah(e.code);
+          _shakeTick++;
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -94,51 +82,72 @@ class _LoginScreenState extends State<LoginScreen>
     _passwordFocus.removeListener(_onFieldFocusChanged);
     _emailController.dispose();
     _passwordController.dispose();
-    _emailFocus.dispose();
-    _passwordFocus.dispose();
-    _animCtrl.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: FadeTransition(
-              opacity: _fade,
-              child: SlideTransition(
-                position: _slide,
+  Widget _loginCard(String? error) {
+    return Shake(
+      trigger: _shakeTick,
+      child: Container(
+        padding: const EdgeInsets.all(26),
+        decoration: appCardDecoration(
+          radius: 28,
+          shadow: AppShadows.soft,
+          border: AppColors.line.withValues(alpha: 0.85),
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const FadeSlideIn(
+                delay: Duration(milliseconds: 300),
+                child: LoginGreeting(),
+              ),
+              const SizedBox(height: 24),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 380),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (constraints.maxWidth >= 820)
-                      SizedBox(
-                        height: constraints.maxHeight,
-                        child: Row(
-                          children: [
-                            Expanded(flex: 11, child: const LoginHero()),
-                            Expanded(
-                              flex: 9,
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 460,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 44,
-                                      vertical: 30,
-                                    ),
-                                    child: _buildLoginForm(),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                    const FieldLabel('Email'),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      textCapitalization: TextCapitalization.none,
+                      autocorrect: false,
+                      style: AppText.body.copyWith(fontSize: 15),
+                      decoration: emailInputDecoration(),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Email tidak boleh kosong';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 460),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FieldLabel('Kata sandi'),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _login(),
+                      style: AppText.body.copyWith(fontSize: 15),
+                      decoration: passwordInputDecoration(
+                        obscure: _obscurePassword,
+                        onToggle: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
                         ),
                       )
                     else ...[
@@ -152,82 +161,112 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                         ),
                       ),
-                    ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Password tidak boleh kosong';
+                        }
+                        return null;
+                      },
+                    ),
                   ],
                 ),
               ),
-            ),
+              AnimatedSize(
+                duration: AppMotion.base,
+                curve: AppMotion.out,
+                alignment: Alignment.topCenter,
+                child: error == null
+                    ? const SizedBox(width: double.infinity)
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 14),
+                        child: LoginErrorBanner(error, key: ValueKey(error)),
+                      ),
+              ),
+              const SizedBox(height: 24),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 540),
+                child: AppButton(
+                  label: 'Masuk ke sistem',
+                  icon: Icons.arrow_forward_rounded,
+                  height: 56,
+                  isLoading: _isLoading,
+                  onPressed: _isLoading ? null : _login,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.verified_user_outlined,
+                    size: 15,
+                    color: AppColors.muted,
+                  ),
+                  const SizedBox(width: 7),
+                  Text('Khusus karyawan terdaftar', style: AppText.caption),
+                ],
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildLoginForm() => LoginCard(
-    child: Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const LoginGreeting(),
-          const SizedBox(height: 30),
-          const CapsLabel('EMAIL'),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _emailController,
-            focusNode: _emailFocus,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-            decoration: emailInputDecoration(focused: _emailFocus.hasFocus),
-            onEditingComplete: _passwordFocus.requestFocus,
-            validator: (value) => value == null || value.trim().isEmpty
-                ? 'Email tidak boleh kosong'
-                : null,
-          ),
-          const SizedBox(height: 21),
-          const CapsLabel('KATA SANDI'),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _passwordController,
-            focusNode: _passwordFocus,
-            obscureText: _obscurePassword,
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => _isLoading ? null : _login(),
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-            decoration: passwordInputDecoration(
-              obscure: _obscurePassword,
-              focused: _passwordFocus.hasFocus,
-              onToggle: () =>
-                  setState(() => _obscurePassword = !_obscurePassword),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 900;
+          final content = wide
+              ? IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Expanded(
+                        flex: 11,
+                        child: LoginHero(expanded: true),
+                      ),
+                      const SizedBox(width: 22),
+                      Expanded(
+                        flex: 9,
+                        child: Center(child: _loginCard(_errorMessage)),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: [
+                    const LoginHero(),
+                    const SizedBox(height: 16),
+                    _loginCard(_errorMessage),
+                  ],
+                );
+
+          return AnimatedPadding(
+            duration: AppMotion.base,
+            curve: AppMotion.out,
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
-            validator: (value) => value == null || value.isEmpty
-                ? 'Password tidak boleh kosong'
-                : null,
-          ),
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 14),
-            LoginErrorBanner(_errorMessage!),
-          ],
-          const SizedBox(height: 27),
-          GradientLoginButton(
-            isLoading: _isLoading,
-            onPressed: _isLoading ? null : _login,
-          ),
-          const SizedBox(height: 15),
-          Center(
-            child: Text(
-              'Akses khusus tim operasional',
-              style: TextStyle(
-                color: AppColors.textMuted.withValues(alpha: .9),
-                fontSize: 10.5,
-                letterSpacing: .15,
+            child: SafeArea(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.all(wide ? 28 : 16),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1160),
+                    child: content,
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          );
+        },
       ),
-    ),
-  );
+    );
+  }
 }

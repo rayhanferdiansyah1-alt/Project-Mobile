@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth_gate.dart';
-import 'ui/ui.dart';
+import 'ui/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,8 +20,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SPK WIP Bodi & Cat',
-      debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      debugShowCheckedModeBanner: false,
       home: const AuthGate(),
     );
   }

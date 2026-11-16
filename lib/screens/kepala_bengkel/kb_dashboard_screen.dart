@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
 import '../../ui/ui.dart';
-import '../../utils/page_transitions.dart';
 import '../../utils/wip_format.dart';
 import 'kb_unit_detail_screen.dart';
 
@@ -27,16 +26,16 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
       .watchHasilRanking();
 
   Future<void> _manualRecompute() async {
+    if (_isRecomputing) return;
     setState(() => _isRecomputing = true);
     try {
       await _repo.recomputeAndSaveRanking();
       if (mounted) {
-        showSuccessSnackbar(context, 'Ranking berhasil dihitung ulang.');
+        showAppSnackbar(context, 'Ranking berhasil dihitung ulang.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal recompute: $e')));
+        showAppSnackbar(context, 'Gagal recompute: $e', kind: SnackKind.error);
       }
     } finally {
       if (mounted) setState(() => _isRecomputing = false);
@@ -48,15 +47,14 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
     try {
       await _repo.terbitkanInstruksi(unit.id);
       if (mounted) {
-        showSuccessSnackbar(
-          context,
-          'Instruksi diterbitkan untuk ${unit.noWO}',
-        );
+        showAppSnackbar(context, 'Instruksi diterbitkan untuk ${unit.noWO}');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menerbitkan instruksi: $e')),
+        showAppSnackbar(
+          context,
+          'Gagal menerbitkan instruksi: $e',
+          kind: SnackKind.error,
         );
       }
     } finally {
@@ -65,14 +63,12 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
   }
 
   void _openDetail(UnitWip unit, RankingEntry entry, int totalUnit) {
+    // Transisi halaman diatur oleh AppTheme (fade + naik tipis).
     Navigator.push(
       context,
-      fadeSlideRoute<void>(
-        child: KbUnitDetailScreen(
-          unit: unit,
-          entry: entry,
-          totalUnit: totalUnit,
-        ),
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            KbUnitDetailScreen(unit: unit, entry: entry, totalUnit: totalUnit),
       ),
     );
   }
@@ -80,25 +76,31 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: UnitWipStreamView(
+      backgroundColor: AppColors.canvas,
+      body: StreamBuilder<List<UnitWip>>(
         stream: _unitStream,
-        builder: (context, units) {
-          final unitById = {for (final u in units) u.id: u};
+        builder: (context, unitSnapshot) {
+          if (unitSnapshot.hasError) {
+            return EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Terjadi kesalahan',
+              message: '${unitSnapshot.error}',
+            );
+          }
+          if (!unitSnapshot.hasData) return const PageSkeleton();
+          final unitById = {for (final u in unitSnapshot.data!) u.id: u};
 
           return StreamBuilder<List<RankingEntry>>(
             stream: _rankingStream,
             builder: (context, rankingSnapshot) {
               if (rankingSnapshot.hasError) {
-                return Center(
-                  child: Text('Terjadi kesalahan: ${rankingSnapshot.error}'),
+                return EmptyState(
+                  icon: Icons.error_outline_rounded,
+                  title: 'Terjadi kesalahan',
+                  message: '${rankingSnapshot.error}',
                 );
               }
-              if (!rankingSnapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.accent),
-                );
-              }
+              if (!rankingSnapshot.hasData) return const PageSkeleton();
 
               final ranking = rankingSnapshot.data!;
               final totalUnit = ranking.length;
@@ -110,7 +112,8 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
 
               var siapCount = 0;
               var ditahanCount = 0;
-              String? heroUnitId;
+              var dikerjakanCount = 0;
+              String? heroUnitId; // unit 'menunggu' dengan peringkat tertinggi
               DateTime? dihitungPada;
               for (final e in ranking) {
                 if (dihitungPada == null ||
@@ -118,8 +121,12 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                   dihitungPada = e.dihitungPada;
                 }
                 final u = unitById[e.unitId];
-                if (u == null || !isMenunggu(u)) continue;
-                heroUnitId ??= u.id;
+                if (u == null) continue;
+                if (!isMenunggu(u)) {
+                  dikerjakanCount++;
+                  continue;
+                }
+                heroUnitId ??= u.id; // ranking sudah terurut per peringkat
                 if (isSiap(u)) {
                   siapCount++;
                 } else {
@@ -142,142 +149,90 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                 }
               }).toList();
 
-              return CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: KbHeader(
-                      totalUnit: totalUnit,
-                      siapCount: siapCount,
-                      ditahanCount: ditahanCount,
-                      dihitungPada: dihitungPada,
-                      isRecomputing: _isRecomputing,
-                      onRefresh: _manualRecompute,
+              return RefreshIndicator(
+                color: AppColors.brand,
+                backgroundColor: AppColors.card,
+                onRefresh: _manualRecompute,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: KbHeader(
+                        totalUnit: totalUnit,
+                        siapCount: siapCount,
+                        ditahanCount: ditahanCount,
+                        dihitungPada: dihitungPada,
+                        isRecomputing: _isRecomputing,
+                        onRefresh: _manualRecompute,
+                      ),
                     ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 21, 20, 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Daftar unit',
-                              style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 19,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -.5,
+                    SliverToBoxAdapter(
+                      child: AppContent(
+                        maxWidth: 900,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                          child: SegmentFilter<_FilterMode>(
+                            current: _filter,
+                            items: [
+                              SegmentItem(
+                                _FilterMode.semua,
+                                'Semua',
+                                count: totalUnit,
                               ),
-                            ),
-                          ),
-                          Text(
-                            '${filtered.length} UNIT',
-                            style: const TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 13),
-                      child: PillTabs<_FilterMode>(
-                        current: _filter,
-                        fitLabels: true,
-                        items: const [
-                          PillTabItem(_FilterMode.semua, 'Semua'),
-                          PillTabItem(_FilterMode.siap, 'Siap'),
-                          PillTabItem(_FilterMode.ditahan, 'Ditahan'),
-                          PillTabItem(_FilterMode.dikerjakan, 'Dikerjakan'),
-                        ],
-                        onChanged: (f) => setState(() => _filter = f),
-                      ),
-                    ),
-                  ),
-                  if (totalUnit > 0)
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
-                        child: Text(
-                          'DIURUTKAN BERDASARKAN PRIORITAS',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textMuted,
-                            letterSpacing: 1,
+                              SegmentItem(
+                                _FilterMode.siap,
+                                'Siap',
+                                count: siapCount,
+                              ),
+                              SegmentItem(
+                                _FilterMode.ditahan,
+                                'Ditahan',
+                                count: ditahanCount,
+                              ),
+                              SegmentItem(
+                                _FilterMode.dikerjakan,
+                                'Dikerjakan',
+                                count: dikerjakanCount,
+                              ),
+                            ],
+                            onChanged: (f) => setState(() => _filter = f),
                           ),
                         ),
                       ),
                     ),
-                  if (filtered.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 48),
-                        child: Center(
-                          child: Container(
-                            constraints: const BoxConstraints(maxWidth: 360),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 28,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _filter == _FilterMode.semua
-                                      ? Icons.directions_car_outlined
-                                      : Icons.filter_alt_off_outlined,
-                                  color: AppColors.accentDark,
-                                  size: 25,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _filter == _FilterMode.semua
-                                      ? 'Belum ada unit WIP'
-                                      : 'Tidak ada unit pada kategori ini',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                const Text(
-                                  'Unit akan muncul di sini setelah data tersedia.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 11.5,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
+                    if (filtered.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: AppContent(
+                          maxWidth: 900,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(22, 12, 20, 10),
+                            child: Text(
+                              'Urutan prioritas',
+                              style: AppText.label,
                             ),
                           ),
                         ),
                       ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final entry = filtered[index];
-                          final unit = unitById[entry.unitId];
-                          if (unit == null) return const SizedBox.shrink();
+                    if (filtered.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyState(
+                          icon: Icons.inbox_outlined,
+                          title: 'Tidak ada unit',
+                          message: 'Belum ada unit pada kategori ini.',
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final entry = filtered[index];
+                            final unit = unitById[entry.unitId];
+                            if (unit == null) return const SizedBox.shrink();
 
                           final siap = isSiapDikerjakan(
                             statusSparepart: unit.statusSparepart,
@@ -285,32 +240,39 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                           );
                           final isHero = unit.id == heroUnitId;
 
-                          return StaggeredFadeIn(
-                            index: index,
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 14),
-                              child: PriorityCard(
-                                entry: entry,
-                                unit: unit,
-                                totalUnit: totalUnit,
-                                siap: siap,
-                                isHero: isHero,
-                                color: AppColors.scoreColor(entry.nilaiUi),
-                                isProcessing: _processingUnitId == unit.id,
-                                onTap: () =>
-                                    _openDetail(unit, entry, totalUnit),
-                                onTerbitkanInstruksi:
-                                    unit.statusPengerjaan == 'menunggu'
-                                    ? () => _terbitkanInstruksi(unit)
-                                    : null,
-                                statusPengerjaan: unit.statusPengerjaan,
+                            // Key memuat filter: daftar muncul ulang
+                            // bertahap setiap filter diganti.
+                            return StaggeredFadeIn(
+                              key: ValueKey('${_filter.name}-${unit.id}'),
+                              index: index,
+                              child: AppContent(
+                                maxWidth: 900,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 14),
+                                  child: PriorityCard(
+                                    entry: entry,
+                                    unit: unit,
+                                    totalUnit: totalUnit,
+                                    siap: siap,
+                                    isHero: isHero,
+                                    color: AppColors.scoreColor(entry.nilaiUi),
+                                    isProcessing: _processingUnitId == unit.id,
+                                    onTap: () =>
+                                        _openDetail(unit, entry, totalUnit),
+                                    onTerbitkanInstruksi:
+                                        unit.statusPengerjaan == 'menunggu'
+                                        ? () => _terbitkanInstruksi(unit)
+                                        : null,
+                                    statusPengerjaan: unit.statusPengerjaan,
+                                  ),
+                                ),
                               ),
-                            ),
-                          );
-                        }, childCount: filtered.length),
+                            );
+                          }, childCount: filtered.length),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               );
             },
           );

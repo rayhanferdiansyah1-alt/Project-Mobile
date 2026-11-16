@@ -33,7 +33,7 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
         'statusPengerjaan': 'sedang_dikerjakan',
       });
       if (mounted) {
-        showSuccessSnackbar(
+        showAppSnackbar(
           context,
           'Instruksi diterbitkan untuk ${widget.unit.noWO}',
         );
@@ -41,8 +41,10 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menerbitkan instruksi: $e')),
+        showAppSnackbar(
+          context,
+          'Gagal menerbitkan instruksi: $e',
+          kind: SnackKind.error,
         );
       }
     } finally {
@@ -103,7 +105,7 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.canvas,
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -114,116 +116,109 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
             ),
           ),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ScoreSummary(value: entry.nilaiUi, siap: siap),
-                  _KbRecommendation(
-                    siap: siap,
-                    text: rekomendasiText(
-                      peringkat: entry.peringkat,
-                      totalUnit: widget.totalUnit,
-                      statusSparepart: unit.statusSparepart,
-                      statusSpkAsuransi: unit.statusSpkAsuransi,
-                      jumlahPanel: unit.jumlahPanel,
-                      agingHari: unit.agingHari,
+            child: AppContent(
+              maxWidth: 780,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ScoreSummary(value: entry.nilaiUi, siap: siap),
+                    const SizedBox(height: 16),
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 220),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.sageSoft,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppColors.line),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: AppColors.card.withValues(alpha: 0.72),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.lightbulb_outline_rounded,
+                                color: AppColors.brandDeep,
+                                size: 19,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Rekomendasi',
+                                    style: AppText.subheading,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    rekomendasiText(
+                                      peringkat: entry.peringkat,
+                                      totalUnit: widget.totalUnit,
+                                      statusSparepart: unit.statusSparepart,
+                                      statusSpkAsuransi: unit.statusSpkAsuransi,
+                                      jumlahPanel: unit.jumlahPanel,
+                                      agingHari: unit.agingHari,
+                                    ),
+                                    style: AppText.bodyMuted.copyWith(
+                                      color: AppColors.ink,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 26),
-                  const Text(
-                    'Dasar penilaian',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -.4,
+                    const SizedBox(height: 26),
+                    Text(
+                      'Rincian kriteria',
+                      style: AppText.heading.copyWith(fontSize: 18),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Kontribusi setiap kriteria terhadap urutan prioritas.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                  ),
-                  const SizedBox(height: 15),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Kontribusi setiap faktor terhadap prioritas unit.',
+                      style: AppText.bodyMuted,
+                    ),
+                    const SizedBox(height: 12),
 
-                  ...criteria.asMap().entries.map(
-                    (e) => CriteriaTile(criteria: e.value, index: e.key),
-                  ),
+                    ...criteria.asMap().entries.map(
+                      (e) => CriteriaTile(criteria: e.value, index: e.key),
+                    ),
 
-                  const SizedBox(height: 12),
-                  WideActionButton(
-                    isProcessing: _isProcessing,
-                    onPressed:
-                        (siap &&
-                            unit.statusPengerjaan == 'menunggu' &&
-                            !_isProcessing)
-                        ? _terbitkanInstruksi
-                        : null,
-                    label: unit.statusPengerjaan == 'menunggu'
-                        ? 'Terbitkan instruksi penugasan'
-                        : 'Status: ${labelPengerjaan(unit.statusPengerjaan)}',
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    TotalScoreCard(nilaiUi: entry.nilaiUi),
+
+                    const SizedBox(height: 24),
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 600),
+                      child: WideActionButton(
+                        icon: Icons.assignment_turned_in_rounded,
+                        isProcessing: _isProcessing,
+                        onPressed:
+                            (siap &&
+                                unit.statusPengerjaan == 'menunggu' &&
+                                !_isProcessing)
+                            ? _terbitkanInstruksi
+                            : null,
+                        label: unit.statusPengerjaan == 'menunggu'
+                            ? 'Terbitkan instruksi teknisi'
+                            : 'Status: ${labelPengerjaan(unit.statusPengerjaan)}',
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _KbRecommendation extends StatelessWidget {
-  const _KbRecommendation({required this.siap, required this.text});
-  final bool siap;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = siap ? AppColors.success : AppColors.warningText;
-    final background = siap ? AppColors.successSoft : AppColors.warningSoft;
-    return Container(
-      margin: const EdgeInsets.only(top: 1),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 13),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: .16)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            siap ? Icons.check_circle_outline : Icons.pending_actions_outlined,
-            color: color,
-            size: 18,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  siap ? 'SIAP MASUK ANTREAN' : 'PERLU TINDAK LANJUT',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  text,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 12,
-                    height: 1.45,
-                  ),
-                ),
-              ],
             ),
           ),
         ],
