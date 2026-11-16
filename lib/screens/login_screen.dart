@@ -149,17 +149,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         onToggle: () => setState(
                           () => _obscurePassword = !_obscurePassword,
                         ),
-                      )
-                    else ...[
-                      const LoginHero(),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 440),
-                            child: _buildLoginForm(),
-                          ),
-                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {

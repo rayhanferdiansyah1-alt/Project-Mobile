@@ -250,12 +250,6 @@ class KbHeader extends StatelessWidget {
           'Kepala bengkel · ${now.day} ${_bulan[now.month - 1]} ${now.year}',
       title: 'Prioritas unit',
       actions: [
-        HeaderIconButton(
-          icon: Icons.refresh_rounded,
-          tooltip: 'Hitung ulang ranking',
-          isLoading: isRecomputing,
-          onTap: onRefresh,
-        ),
         const AppUserMenu(),
       ],
       extra: Column(

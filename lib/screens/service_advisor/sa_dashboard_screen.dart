@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart' show ScrollDirection;
 import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
 import '../../ui/ui.dart';
+import '../../utils/page_transitions.dart';
 import 'sa_unit_form_screen.dart';
 
 class SaDashboardScreen extends StatefulWidget {
@@ -136,16 +137,7 @@ class _SaDashboardScreenState extends State<SaDashboardScreen> {
                         onChanged: (v) => setState(() => _query = v),
                       ),
                     ),
-                    Positioned(
-                      left: 20,
-                      right: 20,
-                      bottom: 12,
-                      child: WipSearchBar(
-                        controller: _searchCtrl,
-                        onChanged: (v) => setState(() => _query = v),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
                 if (all.isEmpty)
                   const SliverFillRemaining(

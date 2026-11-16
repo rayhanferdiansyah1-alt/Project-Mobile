@@ -61,10 +61,10 @@ class _SaUnitFormScreenState extends State<SaUnitFormScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppColors.accent,
-              onPrimary: AppColors.surface,
-              surface: AppColors.surface,
-              onSurface: AppColors.textPrimary,
+              primary: AppColors.brand,
+              onPrimary: AppColors.card,
+              surface: AppColors.card,
+              onSurface: AppColors.ink,
             ),
           ),
           child: child!,
