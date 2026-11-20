@@ -72,6 +72,7 @@ class PriorityCard extends StatelessWidget {
     required this.isProcessing,
     required this.onTap,
     required this.onTerbitkanInstruksi,
+    required this.onSelesai,
     required this.statusPengerjaan,
   });
 
@@ -84,11 +85,15 @@ class PriorityCard extends StatelessWidget {
   final bool isProcessing;
   final VoidCallback onTap;
   final VoidCallback? onTerbitkanInstruksi;
+
+  /// Dipanggil saat tombol "Selesai" ditekan (unit sedang dikerjakan).
+  final VoidCallback? onSelesai;
   final String statusPengerjaan;
 
   @override
   Widget build(BuildContext context) {
     final dikerjakan = statusPengerjaan != 'menunggu';
+    final sedangDikerjakan = statusPengerjaan == 'sedang_dikerjakan';
     final StatusLevel level = dikerjakan
         ? StatusLevel.info
         : (siap ? StatusLevel.good : StatusLevel.warn);
@@ -210,11 +215,110 @@ class PriorityCard extends StatelessWidget {
                     onPressed: (siap && !isProcessing)
                         ? onTerbitkanInstruksi
                         : null,
+                  )
+                else if (sedangDikerjakan)
+                  AppButton(
+                    label: 'Selesai',
+                    icon: Icons.check_rounded,
+                    height: 42,
+                    expand: false,
+                    isLoading: isProcessing,
+                    onPressed: isProcessing ? null : onSelesai,
                   ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Kartu riwayat untuk unit yang sudah ditandai selesai. Unit selesai
+/// sudah keluar dari perhitungan SMART, jadi tidak ada peringkat/skor.
+class FinishedUnitCard extends StatelessWidget {
+  const FinishedUnitCard({super.key, required this.unit});
+
+  final UnitWip unit;
+
+  static const _bulan = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+  ];
+
+  String _tanggal(DateTime d) => '${d.day} ${_bulan[d.month - 1]} ${d.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    final pal = AppColors.status(StatusLevel.good);
+    final lama = unit.updatedAt.difference(unit.tanggalMasuk).inDays;
+    final lamaHari = lama < 0 ? 0 : lama;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: appCardDecoration(
+        color: AppColors.card,
+        border: AppColors.line,
+        borderWidth: 1,
+        shadow: AppShadows.soft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      unit.tipeKendaraan,
+                      style: AppText.heading.copyWith(fontSize: 17),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(unit.noWO, style: AppText.mono),
+                  ],
+                ),
+              ),
+              Icon(Icons.check_circle_rounded, color: pal.fill, size: 30),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: InfoPair(label: 'Panel', value: '${unit.jumlahPanel}'),
+              ),
+              Expanded(
+                child: InfoPair(label: 'Lama proses', value: '$lamaHari hari'),
+              ),
+              Expanded(
+                flex: 2,
+                child: InfoPair(
+                  label: 'Estimasi biaya',
+                  value: 'Rp ${formatRupiah(unit.estimasiBiaya)}',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              StatusChip.sparepart(unit.statusSparepart, prefix: 'Part '),
+              StatusChip.spk(unit.statusSpkAsuransi, prefix: 'SPK '),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Selesai · ${_tanggal(unit.updatedAt)}',
+            style: AppText.label.copyWith(
+              color: pal.fg,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../../models/unit_wip.dart';
 import '../../services/unit_wip_repository.dart';
 import '../../ui/ui.dart';
 import '../../utils/wip_format.dart';
+import 'kb_dashboard_screen.dart' show confirmSelesai;
 
 class KbUnitDetailScreen extends StatefulWidget {
   const KbUnitDetailScreen({
@@ -26,12 +27,37 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
   final _repo = UnitWipRepository();
   bool _isProcessing = false;
 
+  Future<void> _selesaikanUnit() async {
+    final ok = await confirmSelesai(context, widget.unit.noWO);
+    if (ok != true || !mounted) return;
+
+    setState(() => _isProcessing = true);
+    try {
+      await _repo.selesaikanUnit(widget.unit.id);
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          '${widget.unit.noWO} selesai, ranking diperbarui.',
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          'Gagal menandai selesai: $e',
+          kind: SnackKind.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
   Future<void> _terbitkanInstruksi() async {
     setState(() => _isProcessing = true);
     try {
-      await _repo.updateUnitFields(widget.unit.id, {
-        'statusPengerjaan': 'sedang_dikerjakan',
-      });
+      await _repo.terbitkanInstruksi(widget.unit.id);
       if (mounted) {
         showAppSnackbar(
           context,
@@ -168,6 +194,7 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
                                       statusSpkAsuransi: unit.statusSpkAsuransi,
                                       jumlahPanel: unit.jumlahPanel,
                                       agingHari: unit.agingHari,
+                                      statusPengerjaan: unit.statusPengerjaan,
                                     ),
                                     style: AppText.bodyMuted.copyWith(
                                       color: AppColors.ink,
@@ -203,16 +230,21 @@ class _KbUnitDetailScreenState extends State<KbUnitDetailScreen> {
                     FadeSlideIn(
                       delay: const Duration(milliseconds: 600),
                       child: WideActionButton(
-                        icon: Icons.assignment_turned_in_rounded,
+                        icon: unit.statusPengerjaan == 'sedang_dikerjakan'
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.assignment_turned_in_rounded,
                         isProcessing: _isProcessing,
-                        onPressed:
-                            (siap &&
-                                unit.statusPengerjaan == 'menunggu' &&
-                                !_isProcessing)
-                            ? _terbitkanInstruksi
+                        onPressed: _isProcessing
+                            ? null
+                            : unit.statusPengerjaan == 'menunggu'
+                            ? (siap ? _terbitkanInstruksi : null)
+                            : unit.statusPengerjaan == 'sedang_dikerjakan'
+                            ? _selesaikanUnit
                             : null,
                         label: unit.statusPengerjaan == 'menunggu'
                             ? 'Terbitkan instruksi teknisi'
+                            : unit.statusPengerjaan == 'sedang_dikerjakan'
+                            ? 'Tandai selesai'
                             : 'Status: ${labelPengerjaan(unit.statusPengerjaan)}',
                       ),
                     ),

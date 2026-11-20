@@ -142,6 +142,13 @@ class UnitWipRepository {
     return updateUnitFields(unitId, {'statusPengerjaan': 'sedang_dikerjakan'});
   }
 
+  /// Tandai unit selesai dikerjakan. Unit `selesai` dikeluarkan dari
+  /// perhitungan SMART, jadi x_max/x_min berubah dan peringkat unit lain
+  /// dihitung ulang otomatis (lewat updateUnitFields -> recompute).
+  Future<void> selesaikanUnit(String unitId) {
+    return updateUnitFields(unitId, {'statusPengerjaan': 'selesai'});
+  }
+
   Future<void> deleteUnit(String unitId) async {
     await _unitWipCol.doc(unitId).delete();
     await recomputeAndSaveRanking();

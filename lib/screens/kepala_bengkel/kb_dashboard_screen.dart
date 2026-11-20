@@ -6,7 +6,32 @@ import '../../ui/ui.dart';
 import '../../utils/wip_format.dart';
 import 'kb_unit_detail_screen.dart';
 
-enum _FilterMode { semua, siap, ditahan, dikerjakan }
+enum _FilterMode { semua, siap, ditahan, dikerjakan, selesai }
+
+/// Dialog konfirmasi sebelum unit ditandai selesai. Dipakai juga oleh
+/// layar detail. Mengembalikan true kalau Kepala Bengkel menekan "Selesai".
+Future<bool?> confirmSelesai(BuildContext context, String noWO) {
+  return showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Tandai unit selesai?'),
+      content: Text(
+        'WO $noWO akan dikeluarkan dari daftar prioritas dan ranking unit '
+        'lain dihitung ulang.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Selesai'),
+        ),
+      ],
+    ),
+  );
+}
 
 class KbDashboardScreen extends StatefulWidget {
   const KbDashboardScreen({super.key});
@@ -62,6 +87,29 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
     }
   }
 
+  Future<void> _selesaikanUnit(UnitWip unit) async {
+    final ok = await confirmSelesai(context, unit.noWO);
+    if (ok != true || !mounted) return;
+
+    setState(() => _processingUnitId = unit.id);
+    try {
+      await _repo.selesaikanUnit(unit.id);
+      if (mounted) {
+        showAppSnackbar(context, '${unit.noWO} selesai, ranking diperbarui.');
+      }
+    } catch (e) {
+      if (mounted) {
+        showAppSnackbar(
+          context,
+          'Gagal menandai selesai: $e',
+          kind: SnackKind.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _processingUnitId = null);
+    }
+  }
+
   void _openDetail(UnitWip unit, RankingEntry entry, int totalUnit) {
     // Transisi halaman diatur oleh AppTheme (fade + naik tipis).
     Navigator.push(
@@ -102,8 +150,24 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
               }
               if (!rankingSnapshot.hasData) return const PageSkeleton();
 
-              final ranking = rankingSnapshot.data!;
+              // Hanya unit aktif. Unit `selesai` tidak masuk ranking; entri
+              // basi (sebelum recompute selesai) ikut disaring di sini.
+              final ranking = rankingSnapshot.data!.where((e) {
+                final u = unitById[e.unitId];
+                return u != null && u.statusPengerjaan != 'selesai';
+              }).toList();
               final totalUnit = ranking.length;
+
+              // Riwayat: unit selesai, yang paling baru selesai di atas.
+              final selesaiUnits =
+                  unitSnapshot.data!
+                      .where((u) => u.statusPengerjaan == 'selesai')
+                      .toList()
+                    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+              final showSelesai = _filter == _FilterMode.selesai;
+              final listCount = showSelesai
+                  ? selesaiUnits.length
+                  : null; // diisi setelah `filtered` dihitung
               bool isMenunggu(UnitWip u) => u.statusPengerjaan == 'menunggu';
               bool isSiap(UnitWip u) => isSiapDikerjakan(
                 statusSparepart: u.statusSparepart,
@@ -146,8 +210,11 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                     return isMenunggu(u) && !isSiap(u);
                   case _FilterMode.dikerjakan:
                     return !isMenunggu(u);
+                  case _FilterMode.selesai:
+                    return false; // daftar selesai dibangun dari selesaiUnits
                 }
               }).toList();
+              final itemCount = listCount ?? filtered.length;
 
               return RefreshIndicator(
                 color: AppColors.brand,
@@ -194,26 +261,31 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                                 'Dikerjakan',
                                 count: dikerjakanCount,
                               ),
+                              SegmentItem(
+                                _FilterMode.selesai,
+                                'Selesai',
+                                count: selesaiUnits.length,
+                              ),
                             ],
                             onChanged: (f) => setState(() => _filter = f),
                           ),
                         ),
                       ),
                     ),
-                    if (filtered.isNotEmpty)
+                    if (itemCount > 0)
                       SliverToBoxAdapter(
                         child: AppContent(
                           maxWidth: 900,
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(22, 12, 20, 10),
                             child: Text(
-                              'Urutan prioritas',
+                              showSelesai ? 'Riwayat selesai' : 'Urutan prioritas',
                               style: AppText.label,
                             ),
                           ),
                         ),
                       ),
-                    if (filtered.isEmpty)
+                    if (itemCount == 0)
                       const SliverFillRemaining(
                         hasScrollBody: false,
                         child: EmptyState(
@@ -230,6 +302,21 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                             context,
                             index,
                           ) {
+                            if (showSelesai) {
+                              return StaggeredFadeIn(
+                                key: ValueKey('selesai-${selesaiUnits[index].id}'),
+                                index: index,
+                                child: AppContent(
+                                  maxWidth: 900,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 14),
+                                    child: FinishedUnitCard(
+                                      unit: selesaiUnits[index],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
                             final entry = filtered[index];
                             final unit = unitById[entry.unitId];
                             if (unit == null) return const SizedBox.shrink();
@@ -263,12 +350,17 @@ class _KbDashboardScreenState extends State<KbDashboardScreen> {
                                         unit.statusPengerjaan == 'menunggu'
                                         ? () => _terbitkanInstruksi(unit)
                                         : null,
+                                    onSelesai:
+                                        unit.statusPengerjaan ==
+                                            'sedang_dikerjakan'
+                                        ? () => _selesaikanUnit(unit)
+                                        : null,
                                     statusPengerjaan: unit.statusPengerjaan,
                                   ),
                                 ),
                               ),
                             );
-                          }, childCount: filtered.length),
+                          }, childCount: itemCount),
                         ),
                       ),
                   ],
