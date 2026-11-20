@@ -18,3 +18,4 @@ export 'status.dart';
 export 'feedback.dart';
 export 'auth.dart';
 export 'layout.dart';
+export 'bottom_nav.dart';
